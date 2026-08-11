@@ -83,6 +83,12 @@ http {
             proxy_pass http://${GO2RTC_UPSTREAM}/api/ws?src=$cam;
         }
 
+        # Unauthenticated liveness probe (Route 53 health checks / failover).
+        # Reveals nothing and signs nothing.
+        location = /healthz {
+            return 200 "ok\n";
+        }
+
         location / {
             return 404;
         }
