@@ -1,0 +1,90 @@
+# Turzi building relay (DEVICE_PROVIDERS.md §3.3 local media path).
+# The same signed-URL contract as the cloud relay, running on the
+# building's mini-PC: validates locally, proxies to Frigate/go2rtc,
+# media never leaves the LAN. Rendered by the entrypoint — only
+# ${FRIGATE_UPSTREAM}, ${GO2RTC_UPSTREAM} and ${CERT_DIR} are
+# substituted; the signing secret reaches Lua via the environment (or
+# the provisioned secret file), never this file.
+
+worker_processes auto;
+pid /tmp/nginx.pid;
+error_log /dev/stderr notice;
+env STREAM_SECRET;
+env STREAM_SECRET_FILE;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    access_log /dev/stdout;
+
+    init_by_lua_block {
+        -- Auto-provisioned relays read the secret from /data (re-read on
+        -- HUP, so daily refreshes can rotate it); manual mode uses env.
+        local secret_file = os.getenv("STREAM_SECRET_FILE")
+        if secret_file then
+            local fh = io.open(secret_file, "r")
+            if fh then relay_secret = fh:read("*l"); fh:close() end
+        else
+            relay_secret = os.getenv("STREAM_SECRET")
+        end
+
+        -- Signature contract (must match api-v2 stream-access.service):
+        --   sig = base64url( hmac_sha1( secret, "{exp}:{path}" ) )
+        function relay_check()
+            if not relay_secret or relay_secret == "" then
+                ngx.log(ngx.ERR, "STREAM_SECRET not configured")
+                return ngx.exit(500)
+            end
+            local args = ngx.req.get_uri_args()
+            local exp = tonumber(args.exp)
+            local sig = args.sig
+            if not exp or type(sig) ~= "string" then return ngx.exit(410) end
+            if exp < ngx.time() then return ngx.exit(410) end
+            local digest = ngx.encode_base64(ngx.hmac_sha1(relay_secret, exp .. ":" .. ngx.var.uri))
+            local expected = digest:gsub("%+", "-"):gsub("/", "_"):gsub("=+$", "")
+            if expected ~= sig then return ngx.exit(403) end
+        end
+    }
+
+    server {
+        listen 443 ssl;
+        ssl_certificate     ${CERT_DIR}/fullchain.pem;
+        ssl_certificate_key ${CERT_DIR}/privkey.pem;
+
+        # Snapshot tier: Frigate's latest frame, polled ~1/s by clients.
+        location ~ "^/cam/(?<cam>[^/]+)/latest\.jpg$" {
+            access_by_lua_block { relay_check() }
+            proxy_pass http://${FRIGATE_UPSTREAM}/api/$cam/latest.jpg;
+        }
+
+        # Snapshot tier, go2rtc frame grab (cameras Frigate doesn't snapshot).
+        location ~ "^/cam/(?<cam>[^/]+)/frame\.jpg$" {
+            access_by_lua_block { relay_check() }
+            proxy_pass http://${GO2RTC_UPSTREAM}/api/frame.jpeg?src=$cam;
+        }
+
+        # Live tier, progressive MP4 (the app's transport).
+        location ~ "^/cam/(?<cam>[^/]+)/stream\.mp4$" {
+            access_by_lua_block { relay_check() }
+            proxy_buffering off;
+            proxy_read_timeout 3600s;
+            proxy_pass http://${GO2RTC_UPSTREAM}/api/stream.mp4?src=$cam&video=h264&audio=aac;
+        }
+
+        # Live tier, MSE over WebSocket (the TCM's transport).
+        location ~ "^/cam/(?<cam>[^/]+)/mse$" {
+            access_by_lua_block { relay_check() }
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 3600s;
+            proxy_pass http://${GO2RTC_UPSTREAM}/api/ws?src=$cam;
+        }
+
+        location / {
+            return 404;
+        }
+    }
+}
