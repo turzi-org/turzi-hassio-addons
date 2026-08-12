@@ -1,10 +1,14 @@
 # Turzi building relay (DEVICE_PROVIDERS.md §3.3 local media path).
-# The same signed-URL contract as the cloud relay, running on the
-# building's mini-PC: validates locally, proxies to Frigate/go2rtc,
-# media never leaves the LAN. Rendered by the entrypoint — only
-# ${FRIGATE_UPSTREAM}, ${GO2RTC_UPSTREAM} and ${CERT_DIR} are
-# substituted; the signing secret reaches Lua via the environment (or
-# the provisioned secret file), never this file.
+# The same signed-URL contract AND the same host-derived routing as
+# the cloud relay, running inside the building: one relay fronts every
+# video server (N Frigate/go2rtc instances) — the request hostname
+# encodes the target box (10-0-1-25.local.… → upstream 10.0.1.25,
+# validated to private/CGNAT ranges), DNS points those names at this
+# relay, and media never leaves the LAN.
+#
+# Rendered by the entrypoint — only ${CERT_DIR}, ${FRIGATE_PORT} and
+# ${GO2RTC_PORT} are substituted; the signing secret reaches Lua via
+# the environment (or the provisioned secret file), never this file.
 
 worker_processes auto;
 pid /tmp/nginx.pid;
@@ -46,45 +50,72 @@ http {
             local expected = digest:gsub("%+", "-"):gsub("/", "_"):gsub("=+$", "")
             if expected ~= sig then return ngx.exit(403) end
         end
+
+        -- Host header → upstream IP: the hostname IS the routing table.
+        -- Only LAN-reachable ranges (RFC1918 + 100.64/10) pass.
+        function relay_route()
+            local v = ngx.var
+            local o = { tonumber(v.h1), tonumber(v.h2), tonumber(v.h3), tonumber(v.h4) }
+            for _, x in ipairs(o) do
+                if not x or x > 255 then return ngx.exit(421) end
+            end
+            local ok = o[1] == 10
+                or (o[1] == 172 and o[2] >= 16 and o[2] <= 31)
+                or (o[1] == 192 and o[2] == 168)
+                or (o[1] == 100 and o[2] >= 64 and o[2] <= 127)
+            if not ok then return ngx.exit(421) end
+            ngx.var.up = o[1] .. "." .. o[2] .. "." .. o[3] .. "." .. o[4]
+            relay_check()
+        end
     }
 
     server {
         listen 443 ssl;
+        # \d+ (not {1,3}): braces break unquoted nginx regexes; Lua
+        # validates the octet ranges anyway.
+        server_name ~^(?<h1>\d+)-(?<h2>\d+)-(?<h3>\d+)-(?<h4>\d+)\.;
         ssl_certificate     ${CERT_DIR}/fullchain.pem;
         ssl_certificate_key ${CERT_DIR}/privkey.pem;
 
+        set $up "";
+
         # Snapshot tier: Frigate's latest frame, polled ~1/s by clients.
         location ~ "^/cam/(?<cam>[^/]+)/latest\.jpg$" {
-            access_by_lua_block { relay_check() }
-            proxy_pass http://${FRIGATE_UPSTREAM}/api/$cam/latest.jpg;
+            access_by_lua_block { relay_route() }
+            proxy_pass http://$up:${FRIGATE_PORT}/api/$cam/latest.jpg;
         }
 
         # Snapshot tier, go2rtc frame grab (cameras Frigate doesn't snapshot).
         location ~ "^/cam/(?<cam>[^/]+)/frame\.jpg$" {
-            access_by_lua_block { relay_check() }
-            proxy_pass http://${GO2RTC_UPSTREAM}/api/frame.jpeg?src=$cam;
+            access_by_lua_block { relay_route() }
+            proxy_pass http://$up:${GO2RTC_PORT}/api/frame.jpeg?src=$cam;
         }
 
         # Live tier, progressive MP4 (the app's transport).
         location ~ "^/cam/(?<cam>[^/]+)/stream\.mp4$" {
-            access_by_lua_block { relay_check() }
+            access_by_lua_block { relay_route() }
             proxy_buffering off;
             proxy_read_timeout 3600s;
-            proxy_pass http://${GO2RTC_UPSTREAM}/api/stream.mp4?src=$cam&video=h264&audio=aac;
+            proxy_pass http://$up:${GO2RTC_PORT}/api/stream.mp4?src=$cam&video=h264&audio=aac;
         }
 
         # Live tier, MSE over WebSocket (the TCM's transport).
         location ~ "^/cam/(?<cam>[^/]+)/mse$" {
-            access_by_lua_block { relay_check() }
+            access_by_lua_block { relay_route() }
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             proxy_read_timeout 3600s;
-            proxy_pass http://${GO2RTC_UPSTREAM}/api/ws?src=$cam;
+            proxy_pass http://$up:${GO2RTC_PORT}/api/ws?src=$cam;
         }
 
-        # Unauthenticated liveness probe (Route 53 health checks / failover).
-        # Reveals nothing and signs nothing.
+        # Stream inventory for go2rtc discovery (signed like media paths).
+        location = /streams {
+            access_by_lua_block { relay_route() }
+            proxy_pass http://$up:${GO2RTC_PORT}/api/streams;
+        }
+
+        # Unauthenticated liveness probe.
         location = /healthz {
             return 200 "ok\n";
         }

@@ -14,15 +14,17 @@ Settings → Add-ons → Add-on Store → ⋮ → **Repositories** → add
 
 ## Configure
 
-In the TCM: **Integraciones → Medios del edificio (LAN)** — set this
-host's LAN IP and press *Generar clave de instalación*. Copy the two
-values from the command it shows into the add-on configuration:
+In the TCM: **Dispositivos → Video** — set this host's LAN IP and
+press *Generar clave de instalación*. Copy the two values from the
+command it shows into the add-on configuration:
 
 - `api_url` — e.g. `http://10.0.1.53:4000`
 - `provision_token` — the single-use `rpt_…` key
 
-Defaults for `frigate_upstream`/`go2rtc_upstream` fit the Frigate
-add-on on the same host. Start the add-on.
+The relay routes by hostname — one relay fronts every Frigate/go2rtc
+instance in the building (the dashed hostname encodes the target box;
+instance addresses are set per integration in the TCM). Defaults for
+`frigate_port`/`go2rtc_port` fit the Frigate add-on. Start the add-on.
 
 It exchanges the key for the community's signing secret, the current
 certificate bundle and a durable credential (all kept in the add-on's

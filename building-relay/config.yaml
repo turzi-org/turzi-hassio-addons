@@ -1,5 +1,5 @@
 name: Turzi Building Relay
-version: "1.0.1"
+version: "1.1.0"
 slug: turzi_building_relay
 description: Signed-URL media relay for the Turzi local media path — LAN camera viewing without the cloud relay
 url: https://github.com/turzi-org/turzi-hassio-addons
@@ -11,10 +11,10 @@ host_network: true
 options:
   api_url: ""
   provision_token: ""
-  frigate_upstream: "127.0.0.1:5000"
-  go2rtc_upstream: "127.0.0.1:1984"
+  frigate_port: 5000
+  go2rtc_port: 1984
 schema:
   api_url: str
   provision_token: str?
-  frigate_upstream: str
-  go2rtc_upstream: str
+  frigate_port: int
+  go2rtc_port: int

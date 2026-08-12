@@ -10,9 +10,11 @@ set -eu
 OPTS=/data/options.json
 API_URL=$(jq -r '.api_url // empty' "$OPTS")
 PROVISION_TOKEN=$(jq -r '.provision_token // empty' "$OPTS")
-FRIGATE_UPSTREAM=$(jq -r '.frigate_upstream // "127.0.0.1:5000"' "$OPTS")
-GO2RTC_UPSTREAM=$(jq -r '.go2rtc_upstream // "127.0.0.1:1984"' "$OPTS")
-export FRIGATE_UPSTREAM GO2RTC_UPSTREAM
+# Upstream boxes are host-derived per request (the dashed hostname
+# encodes the target video server); only the service ports configure.
+FRIGATE_PORT=$(jq -r '.frigate_port // 5000' "$OPTS")
+GO2RTC_PORT=$(jq -r '.go2rtc_port // 1984' "$OPTS")
+export FRIGATE_PORT GO2RTC_PORT
 
 DATA=/data
 BUNDLE_URL="${API_URL}/api/v2/edge/relay/bundle"
@@ -69,7 +71,7 @@ fi
     done
 ) &
 
-envsubst '${FRIGATE_UPSTREAM} ${GO2RTC_UPSTREAM} ${CERT_DIR}' \
+envsubst '${FRIGATE_PORT} ${GO2RTC_PORT} ${CERT_DIR}' \
     < /etc/relay/nginx.conf.tmpl > /etc/relay/nginx.conf
 
 exec /usr/local/openresty/bin/openresty -g 'daemon off;' -c /etc/relay/nginx.conf
