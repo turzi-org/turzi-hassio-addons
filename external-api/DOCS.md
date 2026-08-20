@@ -134,7 +134,41 @@ new state has come back, so `"status": "confirmed"` means the thing actually
 moved. Full endpoint and status-code reference in the
 [repository README](https://github.com/turzi-org/turzi-external-api).
 
+## Bridge version
+
+The add-on works out which protocol the core speaks by watching, not by asking
+you. A v1.1 bridge publishes a retained availability topic; a v1.0 one has no
+such topic, so five seconds of silence after connecting is the answer.
+
+`GET /health` reports the verdict as `protocol`: `v1.1`, `v1.0-assumed`, or
+`detecting` in the first few seconds.
+
+Against a **v1.0 core** it degrades rather than failing, and says so once in the
+log at startup. Commands publish at QoS 2 instead of QoS 1 — a v1.0 core does
+not deduplicate on `command_id`, so a QoS 1 redelivery could actuate a door
+twice — and a command is confirmed from the state echo alone, since no
+acknowledgment is coming. Three things are genuinely unavailable until the
+bridge is upgraded:
+
+- **Rejections are invisible.** Without acks, a command the core refused looks
+  exactly like one it never received.
+- **No offline detection.** With no availability topic, `HOUSE_OFFLINE` can
+  never fire; commands publish into the void and come back `accepted`.
+- **No attribution.** `state_log.origin_type` is `unknown` on every row, so the
+  log cannot tell this API apart from a resident or an automation.
+
+That last one is why command responses carry an `attribution` field:
+`command_id` means the core echoed our own id back, which is proof this command
+caused this change; `inferred` means we matched the first change on the entity
+while the command was in flight, which is the best a v1.0 core allows and is
+not proof — a wall button pressed in the same moment would look identical.
+
 ## Troubleshooting
+
+**`protocol` says `v1.0-assumed` but the bridge is 2026.8.0 or newer.** The
+bridge is not publishing its availability topic. Either it has not finished
+connecting, or its broker credential lacks publish rights on
+`house/{id}/availability`.
 
 **`entities_known` is 0 but `mqtt_connected` is true.** The `house_id` does not
 match what the bridge publishes, or the bridge is not connected to this

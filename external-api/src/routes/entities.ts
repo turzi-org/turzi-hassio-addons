@@ -99,6 +99,11 @@ function sendCommandResult(res: Response, result: CommandResult): void {
         command_id: result.commandId,
         state: result.newState ?? null,
         reason: result.reason ?? null,
+        // How much a `confirmed` is worth: 'command_id' is proof the core
+        // attributed this change to this command, 'inferred' is the best a
+        // v1.0 core allows — the first change on the entity while the command
+        // was in flight.
+        attribution: result.attribution ?? null,
         timings: {
             publish_ms: result.timings.publishMs,
             ack_ms: result.timings.ackMs ?? null,
@@ -179,6 +184,7 @@ export function entitiesRouter(client: TurziClient, config: Config): Router {
             house_id: config.houseId,
             house_availability: current.availability,
             broker_connected: current.connected,
+            protocol: client.protocolMode(),
             entities: client.listEntities(domain)
                 .filter((e) => permitted(e.entityId))
                 .map((e) => serialize(e, current)),

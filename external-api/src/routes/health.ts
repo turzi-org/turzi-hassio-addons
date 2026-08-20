@@ -38,6 +38,11 @@ export function healthRouter(client: TurziClient, pool: Pool, config: Config): R
             database_connected: databaseConnected,
             house_id: config.houseId,
             house_availability: client.availability(),
+            // What the core turned out to speak, detected rather than
+            // configured. 'v1.0-assumed' is the degraded mode: no
+            // acknowledgments, no offline detection, no origin attribution.
+            protocol: client.protocolMode(),
+            protocol_version: client.protocolVersion() ?? null,
             entities_known: client.listEntities().length,
             uptime_s: Math.floor(process.uptime()),
         });

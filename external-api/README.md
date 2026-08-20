@@ -202,10 +202,17 @@ Both return the same envelope:
 
 | `status` | HTTP | Meaning |
 |---|---|---|
-| `confirmed` | 200 | The bridge executed it **and** the entity's new state came back. |
+| `confirmed` | 200 | The bridge executed it **and** the entity's new state came back. Check `attribution`. |
 | `executed` | 200 | Executed, no state change — the no-op case (unlocking an unlocked door). |
 | `accepted` | 202 | Published, nothing heard within the confirm window. It may still happen. |
 | `failed` | 4xx/5xx | Rejected. `reason` says why. |
+
+`attribution` qualifies a `confirmed`: `command_id` is proof the core credited
+this change to this command; `inferred` means it was matched by timing alone,
+which is all a v1.0 core permits. See *Bridge version* in
+[`DOCS.md`](DOCS.md) — the add-on detects which core it is talking to and
+degrades on its own, publishing at QoS 2 and confirming from the echo when
+there are no acknowledgments to wait for.
 
 `failed` maps to a status code by reason: `entity_not_exposed` and
 `entity_unavailable` → 404, `unsupported_command` and `invalid_parameters` →

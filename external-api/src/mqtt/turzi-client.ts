@@ -51,7 +51,21 @@ export interface CommandResult {
     reason?: string;
     newState?: string;
     timings: CommandTimings;
+    /**
+     * How a `confirmed` was established. `command_id` means the core echoed our
+     * own command id back in `origin` — proof this command caused this change.
+     * `inferred` means we matched the first state change on the entity after
+     * publishing, which is the best a v1.0 core allows and is not proof: a wall
+     * button pressed in the same window would look identical.
+     */
+    attribution?: 'command_id' | 'inferred';
 }
+
+/** What the core turned out to support, decided by observation, not configuration. */
+export type ProtocolMode = 'v1.1' | 'v1.0-assumed' | 'detecting';
+
+/** How long to wait for a retained availability payload before concluding v1.0. */
+const PROTOCOL_PROBE_MS = 5000;
 
 export interface EntityState {
     entityId: string;
@@ -84,6 +98,16 @@ export class TurziClient {
     private availabilityPayload?: { state: string; reason?: string };
     private lastAvailabilityLogged?: string;
     private lastReloadAt = 0;
+    /**
+     * Sticky: set the moment a core announces itself on the availability topic,
+     * which only a v1.1 core publishes. Sticky because the payload is retained
+     * — once seen, a later silence means the core is offline, not downgraded.
+     */
+    private v11 = false;
+    /** `protocol_version` as reported by the core; informational only. */
+    private coreProtocol?: string;
+    private probeScheduled = false;
+    private probeElapsed = false;
 
     constructor(private readonly config: Config, private readonly recorder: Recorder) {}
 
@@ -141,6 +165,7 @@ export class TurziClient {
                     `[mqtt] connected to ${broker.tls ? 'mqtts' : 'mqtt'}://${broker.host}:${broker.port} ` +
                     `(house=${this.config.houseId})`,
                 );
+                this.scheduleProtocolProbe();
                 if (!settled) { settled = true; resolve(); }
             });
 
@@ -168,6 +193,41 @@ export class TurziClient {
                 }
             });
         });
+    }
+
+    /**
+     * Retained payloads land within milliseconds of the SUBACK, so a core that
+     * has said nothing after this window is not slow — it is a v1.0 core that
+     * has no availability topic to send. Scheduled once, not per reconnect:
+     * `connect` fires again on every reconnection and the answer does not
+     * change.
+     */
+    private scheduleProtocolProbe(): void {
+        if (this.probeScheduled) return;
+        this.probeScheduled = true;
+        setTimeout(() => {
+            this.probeElapsed = true;
+            if (this.v11) return;
+            console.warn(
+                '[protocol] No availability topic after 5s — assuming a v1.0 core. ' +
+                'Commands will publish at QoS 2 and be confirmed from the state echo alone. ' +
+                'Three things are unavailable until the bridge is upgraded: command ' +
+                'acknowledgments (a rejected command is indistinguishable from a silent one), ' +
+                'the offline fail-fast check, and origin attribution — so state_log cannot tell ' +
+                'this API apart from a resident or an automation.',
+            );
+        }, PROTOCOL_PROBE_MS).unref();
+    }
+
+    /** What we currently believe the core speaks. Surfaced on /health. */
+    protocolMode(): ProtocolMode {
+        if (this.v11) return 'v1.1';
+        return this.probeElapsed ? 'v1.0-assumed' : 'detecting';
+    }
+
+    /** The core's self-reported protocol version, when it states one. */
+    protocolVersion(): string | undefined {
+        return this.coreProtocol;
     }
 
     async disconnect(): Promise<void> {
@@ -210,6 +270,19 @@ export class TurziClient {
         this.availabilityPayload = payload.length ? JSON.parse(payload.toString()) : undefined;
         const state = this.availabilityPayload?.state;
         if (!state) return;
+
+        // The availability topic exists only in v1.1, so its mere arrival is
+        // the detection — `protocol_version` inside it is a nicety the core is
+        // not obliged to send.
+        const version = (this.availabilityPayload as { protocol_version?: unknown })?.protocol_version;
+        if (typeof version === 'string') this.coreProtocol = version;
+        if (!this.v11) {
+            this.v11 = true;
+            console.info(
+                `[protocol] v1.1 core detected (protocol_version=${this.coreProtocol ?? 'unstated'}) — ` +
+                'acknowledgments, command expiry and origin attribution are available',
+            );
+        }
         // Retained, so it replays on every reconnect. Logging each replay would
         // fabricate outages that never happened.
         if (state === this.lastAvailabilityLogged) return;
@@ -267,19 +340,32 @@ export class TurziClient {
             originCommandId: typeof origin.command_id === 'string' ? origin.command_id : undefined,
         });
 
+        const originCommandId = typeof origin.command_id === 'string' ? origin.command_id : undefined;
+
         for (const p of this.pending.values()) {
-            // Only after an ack, matching the v2 publisher: an echo seen before
-            // the ack belongs to whatever moved the entity a moment earlier,
-            // not to this command.
-            if (p.entityId === entityId && p.timings.ackMs !== undefined) {
-                p.timings.stateEchoMs = Date.now() - p.started;
-                p.settle({
-                    status: 'confirmed',
-                    commandId: p.commandId,
-                    newState: body.state,
-                    timings: p.timings,
-                });
-            }
+            if (p.entityId !== entityId) continue;
+
+            // v1.1: require the ack first, matching the v2 publisher — an echo
+            // seen before it belongs to whatever moved the entity a moment
+            // earlier, not to this command.
+            //
+            // v1.0: no ack is ever coming, so the command being in flight is
+            // the only boundary available. Every change on the entity inside
+            // that window is taken as ours, which is an inference and is
+            // reported as one rather than dressed up as proof.
+            if (p.timings.ackMs === undefined && this.v11) continue;
+
+            p.timings.stateEchoMs = Date.now() - p.started;
+            p.settle({
+                status: 'confirmed',
+                commandId: p.commandId,
+                newState: body.state,
+                timings: p.timings,
+                // Proof only when the core echoed our own id back. An ack
+                // ordering says the command was executed, not that THIS change
+                // is the one it caused.
+                attribution: originCommandId === p.commandId ? 'command_id' : 'inferred',
+            });
         }
     }
 
@@ -424,12 +510,16 @@ export class TurziClient {
         });
 
         try {
+            // QoS 1 is safe only because a v1.1 core dedupes on command_id
+            // (PROTOCOL.md §2). A v1.0 core does not, so a QoS 1 redelivery
+            // could actuate a door twice — the protocol's own topic table
+            // specifies QoS 2 for commands without one. While still detecting
+            // we also send QoS 2: it is correct against both, so the unknown
+            // case takes the safe side.
             await client.publishAsync(
                 this.topic(`command/${opts.domain}/${opts.slug}`),
                 payload,
-                // QoS 1 is safe because the command carries a command_id and
-                // the bridge dedupes on it (PROTOCOL.md §2).
-                { qos: 1 },
+                { qos: this.v11 ? 1 : 2 },
             );
             timings.publishMs = Date.now() - started;
         } catch (err: any) {
