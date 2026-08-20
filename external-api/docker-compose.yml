@@ -1,0 +1,40 @@
+# Standalone deployment, for running this outside Home Assistant.
+#
+# As an add-on none of this is used: the Supervisor supplies the broker and the
+# database, and Home Assistant builds the image itself. Here you supply both.
+# Same image, same entrypoint — run.sh detects the absence of a Supervisor and
+# uses the environment as given.
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?set MARIADB_ROOT_PASSWORD in .env}
+      MARIADB_DATABASE: turzi_external_api
+      MARIADB_USER: turzi
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?set MARIADB_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    image: turzi-external-api:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      # The container always listens on 8080; the host port is mapped above.
+      PORT: 8080
+      DATABASE_URL: mysql://turzi:${MARIADB_PASSWORD}@db:3306/turzi_external_api
+
+volumes:
+  db-data:

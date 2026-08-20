@@ -1,0 +1,55 @@
+name: Turzi External System API
+version: "1.0.0"
+slug: turzi_external_api
+description: REST API for external systems to read and operate Home Assistant entities over the Turzi Protocol, with a full action and state log
+url: https://github.com/turzi-org/turzi-external-api
+arch:
+  - amd64
+  - aarch64
+init: false
+
+# Broker and database credentials come from the Supervisor rather than from
+# these options: the operator should not have to copy a Mosquitto password into
+# a second add-on's configuration, and a copied credential is one that never
+# gets rotated.
+services:
+  - mqtt:need
+  - mysql:need
+
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: REST API for the external system (leave closed unless it needs LAN access)
+
+options:
+  house_id: ""
+  api_keys: []
+  allowed_entities: []
+  allowed_domains: []
+  database: turzi_external_api
+  db_url: ""
+  confirm_timeout_ms: 4000
+  log_requests: false
+
+schema:
+  # The topic namespace the Turzi bridge was enrolled with — everything this
+  # add-on reads and publishes lives under house/<house_id>/.
+  house_id: str
+  # "label:secret" per caller. The label is stamped on every command and shows
+  # up in the log and in the HA logbook, so name it after the calling system.
+  # The pattern enforces a secret of at least 16 characters, because this key
+  # opens doors.
+  api_keys:
+    - match(^[A-Za-z0-9_.-]+:[^,]{16,}$)
+  # Entity ids the external system may touch, e.g. cover.garage. Leave empty
+  # and it can reach every entity the bridge exposes — on a real building that
+  # is every door in it.
+  allowed_entities:
+    - match(^[a-z_]+\.[a-z0-9_]+$)
+  allowed_domains:
+    - str
+  database: str
+  # Set only to bypass Supervisor discovery, e.g. mysql://user:pass@host:3306/db
+  db_url: str?
+  confirm_timeout_ms: int(500,30000)
+  log_requests: bool
