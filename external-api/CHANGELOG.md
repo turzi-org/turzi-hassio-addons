@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.1
+
+- When the add-on has no entities after startup, it now says why. An empty
+  cache has three causes that look identical from outside — wrong `house_id`,
+  wrong broker, or nothing exposed — so it listens across every namespace on
+  its broker and reports which one it is: the namespaces that *do* exist (a
+  `house_id` mismatch), or none at all (the bridge is publishing somewhere
+  else).
+
 ## 1.2.0
 
 - The broker is now configurable (`mqtt_host`, `mqtt_port`, `mqtt_tls`,

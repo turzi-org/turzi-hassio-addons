@@ -184,8 +184,9 @@ bridge is not publishing its availability topic. Either it has not finished
 connecting, or its broker credential lacks publish rights on
 `house/{id}/availability`.
 
-**`entities_known` is 0 but `mqtt_connected` is true.** Three causes, in the
-order worth checking:
+**`entities_known` is 0 but `mqtt_connected` is true.** Read the add-on log
+first — it diagnoses this case itself, naming either the namespaces the broker
+does carry or the fact that it carries none. Three causes:
 
 1. The `house_id` does not match what the bridge was enrolled with — compare it
    against the bridge's config entry title.

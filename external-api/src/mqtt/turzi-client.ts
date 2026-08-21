@@ -66,6 +66,8 @@ export type ProtocolMode = 'v1.1' | 'v1.0-assumed' | 'detecting';
 
 /** How long to wait for a retained availability payload before concluding v1.0. */
 const PROTOCOL_PROBE_MS = 5000;
+/** How long to listen for other namespaces when our own turns out to be empty. */
+const SCAN_MS = 3000;
 
 export interface EntityState {
     entityId: string;
@@ -207,6 +209,11 @@ export class TurziClient {
         this.probeScheduled = true;
         setTimeout(() => {
             this.probeElapsed = true;
+            // An empty cache is the symptom people actually hit, and it has
+            // three causes that look identical from here. Rather than making
+            // someone check the bridge, the broker and the exposure list by
+            // hand, ask the broker what it is carrying and say which one it is.
+            if (this.entities.size === 0) void this.scanForHouses();
             if (this.v11) return;
             console.warn(
                 '[protocol] No availability topic after 5s — assuming a v1.0 core. ' +
@@ -217,6 +224,57 @@ export class TurziClient {
                 'this API apart from a resident or an automation.',
             );
         }, PROTOCOL_PROBE_MS).unref();
+    }
+
+    /**
+     * Listen briefly across every namespace to explain an empty cache.
+     *
+     * Retained payloads arrive on subscribe, so three seconds is enough to
+     * enumerate whatever this broker holds. Overlaps our own subscription,
+     * which is harmless: the state handler filters by house, and the ledger
+     * deduplicates.
+     */
+    private async scanForHouses(): Promise<void> {
+        const client = this.client;
+        if (!client) return;
+
+        const seen = new Set<string>();
+        const onMessage = (topic: string) => {
+            const parts = topic.split('/');
+            if (parts[0] === 'house' && parts.length >= 3 && parts[1]) seen.add(parts[1]);
+        };
+
+        client.on('message', onMessage);
+        try {
+            await client.subscribeAsync('house/#', { qos: 0 });
+        } catch (err: any) {
+            client.removeListener('message', onMessage);
+            console.warn(
+                `[diagnostic] Nothing is published under house/${this.config.houseId}/, and this ` +
+                `credential may not scan the broker to find out what is (${err.message}).`,
+            );
+            return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, SCAN_MS));
+        client.removeListener('message', onMessage);
+        await client.unsubscribeAsync('house/#').catch(() => { /* leaving it subscribed is harmless */ });
+
+        seen.delete(this.config.houseId);
+        if (seen.size > 0) {
+            console.warn(
+                `[diagnostic] Nothing is published under house/${this.config.houseId}/, but this broker ` +
+                `does carry: ${[...seen].sort().join(', ')}. That is almost certainly a house_id ` +
+                'mismatch — set house_id to whichever one the bridge uses.',
+            );
+        } else {
+            console.warn(
+                '[diagnostic] This broker carries no house/ namespaces at all, so the Turzi bridge is ' +
+                'not publishing here. Either it is connected to a different broker — check Settings > ' +
+                'Devices & Services > turzi Bridge, and if it is a cloud broker set mqtt_host in this ' +
+                'add-on — or it is not connected at all.',
+            );
+        }
     }
 
     /** What we currently believe the core speaks. Surfaced on /health. */
