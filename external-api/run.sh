@@ -29,7 +29,18 @@ need() {
     }
 }
 
-TURZI_HOUSE_ID=$(need house_id '.house_id | select(. != "")')
+# Trimmed, not just checked for emptiness. A pasted id with a stray space
+# would otherwise be accepted verbatim and produce topics like
+# "house/ abc /state/#" — which subscribe cleanly, match nothing, and leave the
+# add-on reporting zero entities with no error anywhere. Silent is the worst
+# failure mode for the one option nobody can guess.
+TURZI_HOUSE_ID=$(jq -er '.house_id | select(type == "string") | gsub("^\\s+|\\s+$"; "") | select(. != "")' "$OPTS" 2>/dev/null) || {
+    echo "[external-api] Missing required option: house_id" >&2
+    echo "[external-api]   It is the topic namespace the Turzi bridge was enrolled with." >&2
+    echo "[external-api]   Find it in Settings > Devices & Services > turzi Bridge: the entry" >&2
+    echo "[external-api]   is titled 'turzi Bridge for Home Assistant - <house_id>'." >&2
+    exit 1
+}
 API_KEYS=$(need api_keys '.api_keys | select(length > 0) | join(",")')
 ALLOWED_ENTITIES=$(jq -r '.allowed_entities // [] | join(",")' "$OPTS")
 ALLOWED_DOMAINS=$(jq -r '.allowed_domains // [] | join(",")' "$OPTS")
