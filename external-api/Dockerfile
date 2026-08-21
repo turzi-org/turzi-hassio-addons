@@ -34,9 +34,12 @@ COPY --from=build /app/dist ./dist
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-# Nothing here needs root: the add-on writes no files (the log lives in
-# MariaDB) and 8080 is unprivileged.
-USER node
+# Runs as root, like every other Home Assistant add-on — including the building
+# relay beside it. This is not laziness: the Supervisor writes
+# /data/options.json owned by root with mode 600, so a non-root user cannot
+# read its own configuration. An earlier version set `USER node` on the
+# reasoning that nothing here needs root, which was true and irrelevant: the
+# add-on then failed at startup unable to read a single option.
 
 EXPOSE 8080
 

@@ -20,6 +20,23 @@ OPTS=/data/options.json
 SUP="http://supervisor"
 AUTH="Authorization: Bearer ${SUPERVISOR_TOKEN}"
 
+# Check the file before reading options out of it. Every per-option error below
+# assumes jq failed because the option is missing; if jq actually failed because
+# the file was unreadable or malformed, that assumption turns one root cause
+# into a confident, wrong message about whichever option happened to be read
+# first. Diagnose the file loudly here, so the messages after it can be trusted.
+if [ ! -r "$OPTS" ]; then
+    echo "[external-api] Cannot read $OPTS" >&2
+    ls -l "$OPTS" >&2 2>/dev/null || echo "[external-api]   (it does not exist)" >&2
+    echo "[external-api]   Running as uid $(id -u); the Supervisor writes this file as root." >&2
+    exit 1
+fi
+if ! jq -e . "$OPTS" >/dev/null 2>&1; then
+    echo "[external-api] $OPTS is not valid JSON:" >&2
+    jq . "$OPTS" >/dev/null || true
+    exit 1
+fi
+
 need() {
     # jq -e makes an absent or null value an error rather than the string
     # "null" silently becoming a hostname.
