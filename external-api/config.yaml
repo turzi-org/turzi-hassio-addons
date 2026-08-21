@@ -1,5 +1,5 @@
 name: Turzi External System API
-version: "1.1.2"
+version: "1.2.0"
 slug: turzi_external_api
 description: REST API for external systems to read and operate Home Assistant entities over the Turzi Protocol, with a full action and state log
 url: https://github.com/turzi-org/turzi-external-api
@@ -12,9 +12,12 @@ init: false
 # these options: the operator should not have to copy a Mosquitto password into
 # a second add-on's configuration, and a copied credential is one that never
 # gets rotated.
+# `want`, not `need`: both can be overridden below to point at a broker or a
+# database that is not an add-on on this machine, and `need` would refuse to
+# start without a local one that such a deployment does not have.
 services:
-  - mqtt:need
-  - mysql:need
+  - mqtt:want
+  - mysql:want
 
 ports:
   8080/tcp: 8080
@@ -28,6 +31,11 @@ options:
   allowed_domains: []
   database: turzi_external_api
   db_url: ""
+  mqtt_host: ""
+  mqtt_port: 0
+  mqtt_tls: false
+  mqtt_username: ""
+  mqtt_password: ""
   confirm_timeout_ms: 4000
   log_requests: false
 
@@ -51,5 +59,12 @@ schema:
   database: str
   # Set only to bypass Supervisor discovery, e.g. mysql://user:pass@host:3306/db
   db_url: str?
+  # Set only when the Turzi bridge talks to a broker that is NOT the Mosquitto
+  # add-on on this machine. Leave empty and credentials come from the Supervisor.
+  mqtt_host: str?
+  mqtt_port: int?
+  mqtt_tls: bool?
+  mqtt_username: str?
+  mqtt_password: password?
   confirm_timeout_ms: int(500,30000)
   log_requests: bool

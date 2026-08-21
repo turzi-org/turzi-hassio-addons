@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+- The broker is now configurable (`mqtt_host`, `mqtt_port`, `mqtt_tls`,
+  `mqtt_username`, `mqtt_password`). Previously it was always the Mosquitto
+  add-on on this machine, which is wrong whenever the bridge publishes to a
+  cloud broker instead: the add-on would connect, subscribe, and see nothing
+  forever with no way to correct it. Leave empty to keep using the Supervisor's
+  Mosquitto.
+- `mqtt` and `mysql` are declared `want` rather than `need`, so a deployment
+  using an external broker or database is not forced to install add-ons it does
+  not use.
+
 ## 1.1.2
 
 **Fixes a startup failure: the add-on could not read its own configuration.**

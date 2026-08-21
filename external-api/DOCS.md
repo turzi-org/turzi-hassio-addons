@@ -71,6 +71,20 @@ Defaults to the same domains the Turzi v2 API relays (`lock`, `cover`,
 `alarm_control_panel`, `light`, `switch`, `climate`, …). Set it only to narrow
 further.
 
+### `mqtt_host`, `mqtt_port`, `mqtt_tls`, `mqtt_username`, `mqtt_password`
+
+Leave empty and the broker comes from the Mosquitto add-on through the
+Supervisor, which is right whenever the bridge publishes to this machine.
+
+Set them when it does not. A building enrolled against a cloud broker publishes
+there, not to a co-located Mosquitto — and pointed at the wrong broker this
+add-on connects happily, subscribes successfully, and sees nothing at all
+forever. `entities_known: 0` on `/health` with a `house_id` you know is correct
+is what that looks like.
+
+Check which broker the bridge uses under Settings → Devices & Services →
+turzi Bridge before assuming they share one.
+
 ### `database`, `db_url`
 
 `database` is the MariaDB database name, default `turzi_external_api`. Host and
@@ -170,9 +184,17 @@ bridge is not publishing its availability topic. Either it has not finished
 connecting, or its broker credential lacks publish rights on
 `house/{id}/availability`.
 
-**`entities_known` is 0 but `mqtt_connected` is true.** The `house_id` does not
-match what the bridge publishes, or the bridge is not connected to this
-Mosquitto. Check the Turzi Bridge integration first.
+**`entities_known` is 0 but `mqtt_connected` is true.** Three causes, in the
+order worth checking:
+
+1. The `house_id` does not match what the bridge was enrolled with — compare it
+   against the bridge's config entry title.
+2. **The bridge is on a different broker.** `mqtt_connected: true` only means
+   this add-on reached *its* broker; it says nothing about where the bridge
+   publishes. If the building is enrolled against a cloud broker, set
+   `mqtt_host` and friends above.
+3. The entity is not exposed by the bridge — check its Exposure & privacy
+   options.
 
 **Every command returns 503 `HOUSE_OFFLINE`.** The bridge has stopped
 publishing its availability — that is the bridge or HA, not this add-on.

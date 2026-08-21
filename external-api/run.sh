@@ -77,13 +77,28 @@ service() {
     }
 }
 
-# --- MQTT, from the Mosquitto add-on -------------------------------------
-MQTT=$(service mqtt Mosquitto)
-MQTT_HOST=$(echo "$MQTT" | jq -r '.data.host')
-MQTT_PORT=$(echo "$MQTT" | jq -r '.data.port')
-MQTT_USERNAME=$(echo "$MQTT" | jq -r '.data.username // ""')
-MQTT_PASSWORD=$(echo "$MQTT" | jq -r '.data.password // ""')
-MQTT_TLS=$(echo "$MQTT" | jq -r 'if .data.ssl then "true" else "false" end')
+# --- MQTT ----------------------------------------------------------------
+# Normally the Mosquitto add-on, discovered through the Supervisor. But the
+# add-on has to reach whichever broker the BRIDGE publishes to, and that is not
+# always this machine: a building can be enrolled against a cloud broker, in
+# which case a co-located Mosquitto is simply the wrong broker and the add-on
+# would sit connected to it seeing nothing forever.
+MQTT_HOST=$(jq -r '.mqtt_host // ""' "$OPTS")
+if [ -n "$MQTT_HOST" ]; then
+    MQTT_TLS=$(jq -r 'if .mqtt_tls then "true" else "false" end' "$OPTS")
+    if [ "$MQTT_TLS" = "true" ]; then DEFAULT_MQTT_PORT=8883; else DEFAULT_MQTT_PORT=1883; fi
+    MQTT_PORT=$(jq -r --argjson d "$DEFAULT_MQTT_PORT" 'if (.mqtt_port // 0) > 0 then .mqtt_port else $d end' "$OPTS")
+    MQTT_USERNAME=$(jq -r '.mqtt_username // ""' "$OPTS")
+    MQTT_PASSWORD=$(jq -r '.mqtt_password // ""' "$OPTS")
+    echo "[external-api] Using the configured broker, not the Mosquitto add-on."
+else
+    MQTT=$(service mqtt Mosquitto)
+    MQTT_HOST=$(echo "$MQTT" | jq -r '.data.host')
+    MQTT_PORT=$(echo "$MQTT" | jq -r '.data.port')
+    MQTT_USERNAME=$(echo "$MQTT" | jq -r '.data.username // ""')
+    MQTT_PASSWORD=$(echo "$MQTT" | jq -r '.data.password // ""')
+    MQTT_TLS=$(echo "$MQTT" | jq -r 'if .data.ssl then "true" else "false" end')
+fi
 
 # --- Database, from the MariaDB add-on -----------------------------------
 if [ -n "$DB_URL_OVERRIDE" ]; then
