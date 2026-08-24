@@ -137,6 +137,64 @@ A command does not return until the resulting state change arrives, so
 actually moved and that this call is what moved it. `"executed"` means Home
 Assistant ran the service and nothing changed — closing an already-closed gate.
 
+## Exposing it to an external system
+
+Put a reverse proxy in front — the add-on speaks plain HTTP and its API keys
+open doors.
+
+**The caller must be a server, not a mobile app.** A key shipped inside an app
+is extractable from the binary in minutes, and no amount of TLS changes that,
+because nothing is being broken: the credential was handed over. If the
+integrator's users act through a phone, their backend authenticates the user
+and calls this API; the key stays on a machine nobody can decompile.
+
+That also buys the strongest control available here. A backend has a fixed
+egress IP, so the proxy can refuse everyone else outright.
+
+With Nginx Proxy Manager, the **Details** tab is scheme `http`, the Home
+Assistant host, port `8080`, and *Block Common Exploits*. Take the certificate
+from the **SSL** tab (Let's Encrypt), with *Force SSL*, *HTTP/2* and *HSTS*.
+Then in **Advanced**:
+
+```nginx
+allow 203.0.113.10;   # the integrator's egress IP
+deny all;
+
+limit_req zone=turzi_api burst=20 nodelay;
+limit_req_status 429;
+
+# Unauthenticated, and publishes house_id, core version and entity count.
+location = /health {
+    deny all;
+}
+```
+
+These are all server-context directives, so they layer on top of the proxy
+configuration NPM generates rather than replacing it — do not re-declare a
+`location` with its own `proxy_pass`, or the headers NPM injects are silently
+lost.
+
+The rate-limit zone cannot go in that tab, because `limit_req_zone` is only
+valid in the `http` context. Create `/data/nginx/custom/http.conf` inside the
+proxy container and restart it:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=turzi_api:10m rate=5r/s;
+```
+
+Without that file the Advanced tab refuses to save, and the error names the
+syntax rather than the missing zone.
+
+Finally: forward only 80 and 443 to the proxy. A port-forward straight to 8080
+alongside it bypasses every line above.
+
+### Polling is cheap
+
+State is served from an in-memory cache kept current by Home Assistant's event
+stream, so reading an entity costs no round trip to Home Assistant and no
+device traffic. An integrator polling every few seconds is fine; they do not
+need to build change subscriptions to avoid load.
+
 ## Troubleshooting
 
 **`entities_known` is 0.** Nothing in `allowed_entities` exists in Home
