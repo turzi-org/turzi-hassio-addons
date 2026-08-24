@@ -1,95 +1,62 @@
 # Turzi External System API
 
-A small REST API that lets an external system read and operate the entities a
-Home Assistant core exposes — doors, gates, locks, lights, climate — by
-speaking the **Turzi Protocol v1.1** over MQTT, and records every action and
-every observed state in MariaDB as it goes.
+A small REST API that lets an external system read and operate the entities of
+the Home Assistant it runs inside, recording every action and every observed
+state in MariaDB as it goes.
 
 It exists because Turzi v2 is not live yet. When it is, its API will expose the
 same devices to external systems with real identity, per-entity authorization
-and the community ledger behind them, and this service goes away. Until then it
-runs **in parallel**: separate deployment, separate database, separate broker
-credential, no code shared at runtime with v2 and no dependency on it.
+and the community ledger behind them, and this goes away. Until then it runs
+**in parallel**: separate deployment, separate database, no dependency on v2.
 
-What it *does* share is v2's protocol code. The command/ack/state-echo logic in
-[`src/mqtt/turzi-client.ts`](src/mqtt/turzi-client.ts)
-and the TTL policy in
-[`src/mqtt/ttl-policy.ts`](src/mqtt/ttl-policy.ts) are
-adapted from the v2 API's `modules/smart-home/`, deliberately, so the two never
-drift on the wire.
+## How it talks to Home Assistant
+
+Directly, over Home Assistant's WebSocket API — not through the Turzi bridge.
+
+```
+external system ──HTTP──► add-on ──WebSocket──► Home Assistant ──► cover.porton_demo
+                             │                   (same machine)
+                             └──► MariaDB (command_log, state_log)
+
+the Turzi bridge ──MQTT──► the app's broker        (untouched, unaware)
+```
+
+The bridge belongs to the app: it publishes to whichever broker the app uses,
+which for an enrolled building is a cloud broker. Following it there would make
+opening a gate inside the building depend on the internet, to reach a device on
+the same machine. Going direct leaves the bridge entirely alone.
+
+It also attributes better than the protocol path could. Home Assistant returns
+a **context id** for every service call and stamps the same id on the state
+change it causes, so `state_log` can separate this API (`external_api`) from a
+person in the HA UI (`core_user`), an automation (`automation`), and everything
+with no context to go on (`unattributed` — which includes anything done from
+the Turzi app, since the bridge calls services without a user).
+
+One ordering detail that is easy to get wrong: Home Assistant emits the state
+change *during* the service call and returns the context id *after* it, so the
+echo normally arrives before there is anything to match it against. Events are
+therefore held briefly before being classified — see `RECORD_DELAY_MS` in
+[`src/ha/ha-client.ts`](src/ha/ha-client.ts).
 
 ## Two ways to run it
 
 **As a Home Assistant add-on** — the intended deployment. Add
 `https://github.com/turzi-org/turzi-hassio-addons` under *Settings → Add-ons →
-Add-on store → ⋮ → Repositories* and install *Turzi External System API*.
-Broker and database credentials come from the Supervisor, so the only things to
-configure are the house, the API keys and the entity allowlist. See
-[`DOCS.md`](DOCS.md) — that is also what the add-on's Documentation tab shows.
+Add-on store → ⋮ → Repositories* and install *Turzi External System API*. The
+Supervisor supplies both the Home Assistant connection and the database, so the
+only things to configure are the API keys and the entity allowlist. See
+[`DOCS.md`](DOCS.md).
 
 **As a plain container** — `docker compose up -d --build`, with the bundled
-MariaDB and an `.env`. Same image, same entrypoint: `run.sh` detects the
-absence of a Supervisor and uses the environment as given.
-
-## How it works
-
-As an add-on, all of this is one box and nothing crosses a network:
-
-```
-external system ──HTTP──> add-on ──MQTT──> Mosquitto <──MQTT── Turzi bridge ──> Home Assistant
-                            │
-                            └──> MariaDB (command_log, state_log, availability_log)
-```
-
-- **Commands** are published to `house/{id}/command/{domain}/{slug}` with a
-  `command_id`, an `issued_at` and a TTL. The service then waits for the
-  bridge's ack on `house/{id}/ack/{command_id}` and for the entity's state echo,
-  so an HTTP response reports what actually happened rather than what was sent.
-- **State** is not polled. The bridge publishes every exposed entity **retained**,
-  so subscribing gets a full snapshot at connect and every change after it. Reads
-  are served from that cache, and every payload is written to the log — including
-  changes this API did not cause, which is the only way a physical button press
-  or an HA automation is visible at all.
-- **Availability** comes from the bridge's retained LWT topic. A house that is
-  offline makes commands fail fast instead of disappearing into a broker.
-
-## Broker credentials
-
-**As an add-on this section does not apply** — the Mosquitto add-on's
-credentials come from the Supervisor and already permit publishing. Note the
-consequence: those credentials are broad, so `allowed_entities` is the only
-thing scoping what the caller can reach. Set it.
-
-For a standalone deployment against a Turzi cloud broker, read on.
-
-This service is a **platform publisher**, not a client. In cloud mode Turzi
-clients hold strictly subscribe-only credentials and are not allowed to publish
-commands (PROTOCOL.md §4), so a client credential will authenticate here and
-then silently fail to actuate anything.
-
-The narrowest role that works, scoped to one house — for Mosquitto with the
-dynamic security plugin:
-
-```bash
-mosquitto_ctrl dynsec createRole external-api
-mosquitto_ctrl dynsec addRoleACL external-api publishClientSend    'house/YOUR_HOUSE_ID/command/#'          allow
-mosquitto_ctrl dynsec addRoleACL external-api publishClientSend    'house/YOUR_HOUSE_ID/app/command/reload' allow
-mosquitto_ctrl dynsec addRoleACL external-api subscribePattern     'house/YOUR_HOUSE_ID/state/#'            allow
-mosquitto_ctrl dynsec addRoleACL external-api subscribePattern     'house/YOUR_HOUSE_ID/availability'       allow
-mosquitto_ctrl dynsec addRoleACL external-api subscribePattern     'house/YOUR_HOUSE_ID/ack/#'              allow
-mosquitto_ctrl dynsec addRoleACL external-api publishClientReceive 'house/YOUR_HOUSE_ID/#'                  allow
-mosquitto_ctrl dynsec createClient external-api
-mosquitto_ctrl dynsec addClientRole external-api external-api
-```
-
-`publishClientReceive` is the one people forget: without it the subscriptions
-are accepted and no message is ever delivered, which looks exactly like a house
-that publishes nothing.
+MariaDB and an `.env` carrying `HA_URL` and a long-lived token. Same image,
+same entrypoint: `run.sh` detects the absence of a Supervisor and uses the
+environment as given.
 
 ## Running it
 
 ```bash
-cp .env.example .env   # TURZI_HOUSE_ID, MQTT_*, MARIADB_*, API_KEYS
+cp .env.example .env   # TURZI_HOUSE_ID, HA_URL, HA_TOKEN, MARIADB_*, API_KEYS
 docker compose up -d --build
 ```
 
@@ -110,10 +77,9 @@ full list with comments.
 
 | Variable | Required | Notes |
 |---|---|---|
-| `TURZI_HOUSE_ID` | ✅ | Topic namespace the bridge was enrolled with. In Turzi Cloud this is the community id. |
-| `MQTT_HOST` | ✅ | Broker host. `MQTT_PORT` defaults to 8883 with TLS, 1883 without. |
-| `MQTT_TLS` | | Default `false`. Turn it on for anything that leaves a trusted network. |
-| `MQTT_USERNAME` / `MQTT_PASSWORD` | | The platform-ACL credential above. |
+| `TURZI_HOUSE_ID` | ✅ | A label recorded on every log row. No longer has to match anything. |
+| `HA_URL` | ✅ | e.g. `http://homeassistant.local:8123`. Supplied by run.sh in add-on mode. |
+| `HA_TOKEN` | ✅ | A long-lived access token. The Supervisor token in add-on mode. |
 | `DATABASE_URL` | ✅ | Assembled by docker-compose from `MARIADB_PASSWORD`; supplied by the Supervisor in add-on mode. |
 | `API_KEYS` | ✅ | `label:secret` pairs, comma separated. Minimum 16 characters each. |
 | `ALLOWED_DOMAINS` | | Defaults to the same set the v2 API relays. |

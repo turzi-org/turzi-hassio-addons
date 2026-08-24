@@ -1,29 +1,23 @@
 /**
- * Liveness/readiness for Docker and whatever sits in front of it.
+ * Liveness for the Supervisor and whatever proxy sits in front.
  *
- * Only the broker link decides the status code, and two things deliberately do
- * not:
- *
- * - **The house being offline.** Restarting this container does not fix
- *   someone else's internet, and an orchestrator that keeps recycling us while
- *   a community is down is strictly worse than one that leaves us up to answer
- *   with `house_availability: "offline"`.
- * - **The database being down.** Commands still work without it; they just go
- *   unrecorded. Taking the service out of rotation would convert "doors work,
- *   logging is broken" into "nothing works", which is the wrong trade to make
- *   automatically. It reports `degraded` so a human makes that call.
+ * Only the Home Assistant connection decides the status code. The database
+ * being down deliberately does not: commands still work without it, they just
+ * go unrecorded, and taking the service out of rotation would turn "doors
+ * work, logging is broken" into "nothing works". It reports `degraded` so a
+ * human makes that call.
  */
 
 import { Pool } from 'mysql2/promise';
 import { Router } from 'express';
 import { Config } from '../config';
-import { TurziClient } from '../mqtt/turzi-client';
+import { HaClient } from '../ha/ha-client';
 
-export function healthRouter(client: TurziClient, pool: Pool, config: Config): Router {
+export function healthRouter(client: HaClient, pool: Pool, config: Config): Router {
     const router = Router();
 
     router.get('/health', async (_req, res) => {
-        const mqttConnected = client.isConnected();
+        const haConnected = client.isConnected();
         let databaseConnected = true;
         try {
             await pool.query('SELECT 1');
@@ -31,18 +25,13 @@ export function healthRouter(client: TurziClient, pool: Pool, config: Config): R
             databaseConnected = false;
         }
 
-        const status = !mqttConnected ? 'unavailable' : databaseConnected ? 'ok' : 'degraded';
-        res.status(mqttConnected ? 200 : 503).json({
+        const status = !haConnected ? 'unavailable' : databaseConnected ? 'ok' : 'degraded';
+        res.status(haConnected ? 200 : 503).json({
             status,
-            mqtt_connected: mqttConnected,
+            home_assistant_connected: haConnected,
+            core_version: client.coreVersion() ?? null,
             database_connected: databaseConnected,
             house_id: config.houseId,
-            house_availability: client.availability(),
-            // What the core turned out to speak, detected rather than
-            // configured. 'v1.0-assumed' is the degraded mode: no
-            // acknowledgments, no offline detection, no origin attribution.
-            protocol: client.protocolMode(),
-            protocol_version: client.protocolVersion() ?? null,
             entities_known: client.listEntities().length,
             uptime_s: Math.floor(process.uptime()),
         });

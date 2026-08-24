@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.0.0
+
+**Talks to Home Assistant directly instead of through the Turzi bridge.**
+
+The bridge belongs to the Turzi app: it publishes to whichever broker the app
+uses, which for an enrolled building is a cloud broker. Reaching a device on
+the same machine by way of the internet is the wrong dependency for access
+control, and pointing the bridge at a local broker instead would have broken
+the app. Going direct leaves the bridge completely untouched.
+
+Everything the MQTT path needed is gone with it: no broker, no credentials, no
+protocol version to detect, no retained-message replay and therefore none of
+the deduplication that required.
+
+Attribution is now proof rather than inference. Home Assistant returns a
+context id for each service call and stamps it on the resulting state change,
+so `state_log.origin_type` separates `external_api` from `core_user`,
+`automation` and `unattributed` — the last covering changes with no context,
+which includes anything done from the Turzi app.
+
+**Breaking:**
+
+- `mqtt_host`, `mqtt_port`, `mqtt_tls`, `mqtt_username` and `mqtt_password` are
+  removed. The Mosquitto add-on is no longer required at all.
+- `house_id` is now only a label recorded on the log; it no longer selects a
+  topic namespace and does not have to match the bridge.
+- `allowed_entities` now decides what is logged as well as what is reachable,
+  because Home Assistant exposes every entity it knows rather than a curated
+  set. Set it.
+- Command responses report `attribution: "context_id"` or nothing; the v1.0
+  `inferred` value no longer exists. Timings are `call_ms` / `state_echo_ms`.
+- `/health` reports `home_assistant_connected` and `core_version` in place of
+  the MQTT and protocol fields.
+
 ## 1.2.1
 
 - When the add-on has no entities after startup, it now says why. An empty

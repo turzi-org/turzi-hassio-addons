@@ -1,11 +1,10 @@
 #!/bin/sh
 # Turzi external system API, add-on flavor.
 #
-# Options come from the HA add-on configuration (/data/options.json). Broker
-# and database credentials do NOT: they are fetched from the Supervisor, which
-# is why config.yaml declares `mqtt:need` and `mysql:need`. Copying a Mosquitto
-# password into a second add-on's options would work exactly once and then
-# never be rotated again.
+# Options come from the HA add-on configuration (/data/options.json). The
+# Home Assistant connection and the database credentials do NOT: both come from
+# the Supervisor. Copying a password into a second add-on's options would work
+# exactly once and then never be rotated again.
 set -eu
 
 # Standalone mode: no Supervisor, so the environment is already complete (a
@@ -77,28 +76,12 @@ service() {
     }
 }
 
-# --- MQTT ----------------------------------------------------------------
-# Normally the Mosquitto add-on, discovered through the Supervisor. But the
-# add-on has to reach whichever broker the BRIDGE publishes to, and that is not
-# always this machine: a building can be enrolled against a cloud broker, in
-# which case a co-located Mosquitto is simply the wrong broker and the add-on
-# would sit connected to it seeing nothing forever.
-MQTT_HOST=$(jq -r '.mqtt_host // ""' "$OPTS")
-if [ -n "$MQTT_HOST" ]; then
-    MQTT_TLS=$(jq -r 'if .mqtt_tls then "true" else "false" end' "$OPTS")
-    if [ "$MQTT_TLS" = "true" ]; then DEFAULT_MQTT_PORT=8883; else DEFAULT_MQTT_PORT=1883; fi
-    MQTT_PORT=$(jq -r --argjson d "$DEFAULT_MQTT_PORT" 'if (.mqtt_port // 0) > 0 then .mqtt_port else $d end' "$OPTS")
-    MQTT_USERNAME=$(jq -r '.mqtt_username // ""' "$OPTS")
-    MQTT_PASSWORD=$(jq -r '.mqtt_password // ""' "$OPTS")
-    echo "[external-api] Using the configured broker, not the Mosquitto add-on."
-else
-    MQTT=$(service mqtt Mosquitto)
-    MQTT_HOST=$(echo "$MQTT" | jq -r '.data.host')
-    MQTT_PORT=$(echo "$MQTT" | jq -r '.data.port')
-    MQTT_USERNAME=$(echo "$MQTT" | jq -r '.data.username // ""')
-    MQTT_PASSWORD=$(echo "$MQTT" | jq -r '.data.password // ""')
-    MQTT_TLS=$(echo "$MQTT" | jq -r 'if .data.ssl then "true" else "false" end')
-fi
+# --- Home Assistant ------------------------------------------------------
+# The Supervisor proxies Home Assistant's WebSocket API and accepts the add-on
+# token for it, so there is nothing to configure and no long-lived token to
+# create, store or rotate. Requires `homeassistant_api: true` in config.yaml.
+HA_WS_URL="ws://supervisor/core/websocket"
+HA_TOKEN="${SUPERVISOR_TOKEN}"
 
 # --- Database, from the MariaDB add-on -----------------------------------
 if [ -n "$DB_URL_OVERRIDE" ]; then
@@ -116,8 +99,8 @@ fi
 
 export TURZI_HOUSE_ID API_KEYS ALLOWED_ENTITIES ALLOWED_DOMAINS \
        COMMAND_CONFIRM_TIMEOUT_MS LOG_REQUESTS DATABASE_URL \
-       MQTT_HOST MQTT_PORT MQTT_USERNAME MQTT_PASSWORD MQTT_TLS
+       HA_WS_URL HA_TOKEN
 export PORT=8080
 
-echo "[external-api] house=${TURZI_HOUSE_ID} broker=${MQTT_HOST}:${MQTT_PORT} db=${DB_NAME}"
+echo "[external-api] site=${TURZI_HOUSE_ID} home-assistant=supervisor-proxy db=${DB_NAME}"
 exec node /app/dist/index.js

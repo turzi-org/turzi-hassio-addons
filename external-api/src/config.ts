@@ -1,13 +1,10 @@
 /**
  * Configuration, resolved once at boot.
  *
- * Everything this service needs is an environment variable. That is the whole
- * difference from the v2 API's equivalent code, where the broker endpoint
- * comes from `mqtt_configs` and the credential is minted per broker by the
- * Admin Panel. Here the operator supplies both.
- *
- * Misconfiguration fails at startup, loudly. A service that boots and then
- * cannot reach a broker looks healthy to Docker while every command times out.
+ * Everything is an environment variable; as an add-on, run.sh fills them from
+ * the add-on options and from the Supervisor. Misconfiguration fails at
+ * startup, loudly — a service that boots and then cannot reach Home Assistant
+ * looks healthy to the Supervisor while every command fails.
  */
 
 import { createHash } from 'crypto';
@@ -35,19 +32,20 @@ export interface ApiKey {
 
 export interface Config {
     port: number;
+    /**
+     * A label stamped on every log row, identifying the building. It no longer
+     * selects an MQTT topic namespace — this add-on talks to Home Assistant
+     * directly — but the log is worth being able to attribute to a site.
+     */
     houseId: string;
+    ha: {
+        wsUrl: string;
+        token: string;
+    };
     database: {
         url: string;
         connectTimeoutMs: number;
         poolMax: number;
-    };
-    mqtt: {
-        host: string;
-        port: number;
-        tls: boolean;
-        rejectUnauthorized: boolean;
-        username?: string;
-        password?: string;
     };
     apiKeys: ApiKey[];
     /** Domains an external system may command. Reads are not restricted by it. */
@@ -56,7 +54,6 @@ export interface Config {
     allowedEntities: Set<string>;
     actorEmailDomain: string;
     confirmTimeoutMs: number;
-    reloadMinIntervalMs: number;
     logRequests: boolean;
 }
 
@@ -132,14 +129,22 @@ function parseAllowedEntities(): Set<string> {
     return new Set(entities);
 }
 
+/**
+ * Home Assistant's WebSocket endpoint. As an add-on this is the Supervisor's
+ * proxy, set by run.sh; standalone, it is derived from HA_URL so nobody has to
+ * remember that the path is /api/websocket.
+ */
+function haWsUrl(): string {
+    const explicit = process.env.HA_WS_URL?.trim();
+    if (explicit) return explicit;
+    const base = required('HA_URL').replace(/\/+$/, '');
+    return `${base.replace(/^http/, 'ws')}/api/websocket`;
+}
+
 export function loadConfig(): Config {
-    const tls = bool('MQTT_TLS', false);
     const domains = list('ALLOWED_DOMAINS');
     return {
         port: int('PORT', 8080),
-        // The Turzi Protocol topic namespace. In Turzi Cloud this is the
-        // community id, because one bridge serves a whole community — but the
-        // protocol is agnostic, so whatever the bridge was enrolled with wins.
         houseId: required('TURZI_HOUSE_ID'),
         database: {
             url: required('DATABASE_URL'),
@@ -148,25 +153,17 @@ export function loadConfig(): Config {
             connectTimeoutMs: int('DATABASE_CONNECT_TIMEOUT_MS', 60_000),
             poolMax: int('DATABASE_POOL_MAX', 5),
         },
-        mqtt: {
-            host: required('MQTT_HOST'),
-            port: int('MQTT_PORT', tls ? 8883 : 1883),
-            tls,
-            // Escape hatch for a broker with a self-signed certificate. Off by
-            // default: an unverified TLS connection to a door controller is
-            // worse than an honest plaintext one, because it looks secure.
-            rejectUnauthorized: bool('MQTT_TLS_REJECT_UNAUTHORIZED', true),
-            username: process.env.MQTT_USERNAME?.trim() || undefined,
-            password: process.env.MQTT_PASSWORD || undefined,
+        ha: {
+            wsUrl: haWsUrl(),
+            token: required('HA_TOKEN'),
         },
         apiKeys: parseApiKeys(),
         allowedDomains: new Set(domains.length ? domains : DEFAULT_DOMAINS),
         allowedEntities: parseAllowedEntities(),
         actorEmailDomain: process.env.ACTOR_EMAIL_DOMAIN?.trim() || 'external-api.turzi.local',
-        // Protocol v1.1 suggests clients time out around 5 s. We resolve a
-        // little earlier so the HTTP caller is not the one waiting on the edge.
+        // Home Assistant fires the state change within milliseconds of the
+        // service returning, so this is a backstop, not a normal wait.
         confirmTimeoutMs: int('COMMAND_CONFIRM_TIMEOUT_MS', 4000),
-        reloadMinIntervalMs: int('RELOAD_MIN_INTERVAL_MS', 10_000),
         logRequests: bool('LOG_REQUESTS', true),
     };
 }

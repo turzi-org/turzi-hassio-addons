@@ -1,14 +1,18 @@
 /**
- * turzi-external-api — lets an external system read and operate the entities a
- * Home Assistant core exposes, by speaking the Turzi Protocol over MQTT, and
- * records every action and every observed state as it goes.
+ * turzi-external-api — lets an external system read and operate the entities
+ * of the Home Assistant it runs inside, and records every action and every
+ * observed state as it goes.
+ *
+ * It talks to Home Assistant directly rather than through the Turzi bridge.
+ * The bridge belongs to the app: it publishes wherever the app's broker is,
+ * and dragging this along would make opening a gate inside the building depend
+ * on the internet. Direct means the bridge is untouched, still serving the
+ * app, while this path stays local.
  *
  * A stopgap with a known end date. When Turzi v2 goes live its API exposes the
  * same devices to external systems with real identity, per-entity
- * authorization and the community ledger behind them; this service runs in
- * parallel until then and shares no database, no broker credential and no
- * deployment with it. What it does share is v2's protocol code, copied
- * deliberately so the two never drift on the wire.
+ * authorization and the community ledger behind them; this runs in parallel
+ * until then and shares no database and no deployment with it.
  */
 
 import express from 'express';
@@ -18,7 +22,7 @@ import { ConfigError, loadConfig } from './config';
 import { connectDatabase, Recorder } from './db/recorder';
 import { apiKeyAuth } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/errors';
-import { TurziClient } from './mqtt/turzi-client';
+import { HaClient } from './ha/ha-client';
 import { entitiesRouter } from './routes/entities';
 import { healthRouter } from './routes/health';
 import { logsRouter } from './routes/logs';
@@ -34,7 +38,7 @@ async function main(): Promise<void> {
     const pool = await connectDatabase(config.database);
     console.info('[db] connected, schema applied');
 
-    const client = new TurziClient(config, new Recorder(pool));
+    const client = new HaClient(config, new Recorder(pool));
     await client.connect();
 
     const app = express();
@@ -62,7 +66,7 @@ async function main(): Promise<void> {
     const shutdown = (signal: string) => {
         console.info(`[shutdown] ${signal} received`);
         server.close(async () => {
-            await client.disconnect().catch((err) => console.warn(`[shutdown] mqtt: ${err.message}`));
+            await client.disconnect().catch((err) => console.warn(`[shutdown] home assistant: ${err.message}`));
             await pool.end().catch((err) => console.warn(`[shutdown] db: ${err.message}`));
             process.exit(0);
         });
