@@ -1,0 +1,51 @@
+# The building-relay add-on carries no Dockerfile: the Supervisor pulls
+# ghcr.io/turzi-org/building-relay:<version>, where <version> is the
+# `version:` line in config.yaml. There is no `latest` fallback, so a
+# version that has not been published is not a warning — the add-on
+# simply cannot be installed, with an unhelpful error.
+#
+# The image is built from a DIFFERENT repository (turzi-apps,
+# infra/building-relay, tagged from its VERSION file), so nothing else
+# links the two. This check is that link: it asks the registry whether
+# the tag this repo claims actually exists.
+name: Add-on image exists
+
+on:
+  push:
+    paths:
+      - 'building-relay/config.yaml'
+      - '.github/workflows/addon-image-exists.yml'
+  pull_request:
+    paths:
+      - 'building-relay/config.yaml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: The declared version must exist as a published tag
+        run: |
+          set -euo pipefail
+          IMAGE=$(sed -n 's/^image:[[:space:]]*//p' building-relay/config.yaml | tr -d '"')
+          VERSION=$(sed -n 's/^version:[[:space:]]*//p' building-relay/config.yaml | tr -d '"')
+          echo "config.yaml declares $IMAGE:$VERSION"
+
+          case "$IMAGE" in
+            *:*) echo "::error::image: must not carry a tag — the Supervisor rejects it. version: supplies the tag."; exit 1 ;;
+          esac
+
+          # The package is public, so this needs no credentials.
+          if ! docker manifest inspect "$IMAGE:$VERSION" > /tmp/manifest.json 2>/tmp/err; then
+            echo "::error::$IMAGE:$VERSION is not published. Bump VERSION in turzi-apps/infra/building-relay and let its 'Infra images' workflow publish first, then bump this file to match."
+            cat /tmp/err
+            exit 1
+          fi
+
+          # An add-on declaring aarch64 needs an arm64 image behind the tag.
+          for want in amd64 arm64; do
+            grep -q "\"architecture\": \"$want\"" /tmp/manifest.json \
+              || { echo "::error::no $want in the manifest for $IMAGE:$VERSION"; exit 1; }
+          done
+          echo "OK — multi-arch manifest present for amd64 and arm64"

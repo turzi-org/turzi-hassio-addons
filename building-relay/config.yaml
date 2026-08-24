@@ -1,13 +1,42 @@
+# Turzi Building Relay — Home Assistant packaging of the media relay.
+#
+# This directory holds no Dockerfile, no nginx config and no entrypoint:
+# the Supervisor pulls the SAME image that plain-Docker installs use,
+# built from turzi-apps/infra/building-relay. It used to keep copies of
+# all three, and they drifted — the /streams fix that stopped the relay
+# handing over camera RTSP passwords landed in turzi-apps while this
+# add-on went on serving them.
+#
+# `version` IS the image tag. The Supervisor pulls
+# ghcr.io/turzi-org/building-relay:<version> and has no `latest`
+# fallback, so this string must exactly match turzi-apps'
+# infra/building-relay/VERSION, which is what the publish workflow tags.
+# Bumping this line is how the add-on picks up a new image. Keep it
+# quoted — unquoted 1.10 parses as the float 1.1.
 name: Turzi Building Relay
 version: "1.1.1"
 slug: turzi_building_relay
 description: Signed-URL media relay for the Turzi local media path — LAN camera viewing without the cloud relay
 url: https://github.com/turzi-org/turzi-hassio-addons
+
+# Plain multi-arch manifest, no {arch} placeholder: the Supervisor pulls
+# with an explicit platform and verifies the architecture it got, and
+# this is the form the docs prefer. No tag here — the validator rejects
+# one, because `version` above supplies it.
+image: ghcr.io/turzi-org/building-relay
+
+# Still required even with a prebuilt image, and still what decides
+# whether the add-on is offered on a given machine at all.
 arch:
   - amd64
   - aarch64
+
 init: false
+# Each request's hostname encodes which video server to reach, so the
+# relay needs the building's LAN directly. This also makes any `ports:`
+# mapping inert — the listening port is not remappable from the UI.
 host_network: true
+
 options:
   api_url: ""
   provision_token: ""
