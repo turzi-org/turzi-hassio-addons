@@ -1,5 +1,5 @@
 name: Turzi Building Relay
-version: "1.1.0"
+version: "1.1.1"
 slug: turzi_building_relay
 description: Signed-URL media relay for the Turzi local media path — LAN camera viewing without the cloud relay
 url: https://github.com/turzi-org/turzi-hassio-addons

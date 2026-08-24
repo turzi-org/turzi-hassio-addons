@@ -110,9 +110,45 @@ http {
         }
 
         # Stream inventory for go2rtc discovery (signed like media paths).
+        #
+        # The body is reduced to the stream NAMES before it leaves here.
+        # go2rtc answers /api/streams with each stream's producers, and a
+        # producer url is the camera's own RTSP url — credentials embedded:
+        #   {"Patio":{"producers":[{"url":"rtsp://admin:hunter2@10.0.1.99/..."}]}}
+        # Go2rtcDiscoveryService reads Object.keys(body) and nothing else, so
+        # the passwords have no reason to cross the relay, be logged upstream,
+        # or sit in the API's memory. The signature is path-bound, so a viewer
+        # holding a /cam/... signature could never reach this anyway — this
+        # closes the leg between the relay and the API, not a client hole.
         location = /streams {
             access_by_lua_block { relay_route() }
             proxy_pass http://$up:${GO2RTC_PORT}/api/streams;
+
+            header_filter_by_lua_block {
+                -- The rewritten body is shorter than the original.
+                ngx.header.content_length = nil
+            }
+
+            body_filter_by_lua_block {
+                local chunk, eof = ngx.arg[1], ngx.arg[2]
+                if chunk ~= "" then
+                    ngx.ctx.streams_buf = (ngx.ctx.streams_buf or "") .. chunk
+                end
+                -- Hold everything back until the whole document is in hand:
+                -- it cannot be parsed a chunk at a time.
+                ngx.arg[1] = nil
+                if eof then
+                    local cjson = require("cjson.safe")
+                    local decoded = cjson.decode(ngx.ctx.streams_buf or "")
+                    if type(decoded) ~= "table" then
+                        ngx.arg[1] = "{}"
+                    else
+                        local names = {}
+                        for name in pairs(decoded) do names[name] = {} end
+                        ngx.arg[1] = cjson.encode(names) or "{}"
+                    end
+                end
+            }
         }
 
         # Unauthenticated liveness probe.
