@@ -1,5 +1,5 @@
 name: Turzi External System API
-version: "2.0.0"
+version: "2.0.1"
 slug: turzi_external_api
 description: REST API for external systems to read and operate Home Assistant entities over the Turzi Protocol, with a full action and state log
 url: https://github.com/turzi-org/turzi-external-api

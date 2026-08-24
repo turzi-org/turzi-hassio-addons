@@ -61,8 +61,12 @@ function commandStatus(result: CommandResult): number {
     if (result.status !== 'failed') return 200;
     const reason = result.reason ?? '';
     if (reason === 'home_assistant_unavailable') return 503;
-    // Home Assistant's own words for an unknown entity or a bad parameter.
-    if (/not found|unknown|no entity|invalid|required key|extra keys/i.test(reason)) return 400;
+    // Home Assistant's own words for something the caller got wrong. Asking a
+    // gate to move to a position it has no motor for is a bad request, not a
+    // failure of the gateway — 502 would send someone looking at the wrong
+    // layer entirely.
+    if (/not found|unknown|no entity|invalid|validation error|does not support|required key|extra keys/i
+        .test(reason)) return 400;
     return 502;
 }
 

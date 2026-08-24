@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Asking for a service an entity does not support now returns 400 rather than
+  502. Home Assistant calls it a validation error and it is the caller's
+  mistake; 502 pointed at the gateway and sent anyone debugging to the wrong
+  layer.
+
 ## 2.0.0
 
 **Talks to Home Assistant directly instead of through the Turzi bridge.**
