@@ -1,0 +1,64 @@
+name: external-api image
+
+# Prebuilt images so the Supervisor pulls instead of building on the box. A
+# local build of this add-on takes minutes on small hardware and reports 0%
+# throughout, because the Supervisor's progress bar counts image layers and a
+# local build has none — indistinguishable from a hung update.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'external-api/**'
+      - '.github/workflows/external-api-image.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The names on the left are Home Assistant's arch names, which the
+          # Supervisor substitutes into the `{arch}` placeholder in config.yaml.
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The add-on's version IS the tag the Supervisor asks for — it pulls
+      # `<image>:<version from config.yaml>` and has no `latest` fallback. So
+      # config.yaml and the published tag must agree exactly, and bumping the
+      # version is what makes an update exist at all.
+      - name: Read the add-on version
+        id: v
+        run: |
+          version=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' external-api/config.yaml)
+          if [ -z "$version" ]; then echo "no version in external-api/config.yaml" >&2; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing $version for ${{ matrix.arch }}"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: external-api
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+          tags: |
+            ghcr.io/turzi-org/turzi-external-api-${{ matrix.arch }}:${{ steps.v.outputs.version }}
+            ghcr.io/turzi-org/turzi-external-api-${{ matrix.arch }}:latest
