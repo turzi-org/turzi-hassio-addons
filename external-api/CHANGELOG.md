@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1
+
+- The add-on is now a **prebuilt image** rather than a build on your machine.
+  Updates are a pull of a few seconds with a real progress bar, instead of
+  several minutes at 0% that were indistinguishable from a hung update.
+  Published per architecture to GHCR on every change.
+
 ## 2.2.0
 
 - **Times are shown in the building's timezone**, read from Home Assistant's

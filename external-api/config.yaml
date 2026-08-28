@@ -1,5 +1,5 @@
 name: Turzi External System API
-version: "2.2.0"
+version: "2.2.1"
 slug: turzi_external_api
 description: REST API for external systems to read and operate Home Assistant entities over the Turzi Protocol, with a full action and state log
 url: https://github.com/turzi-org/turzi-external-api
@@ -7,6 +7,11 @@ arch:
   - amd64
   - aarch64
 init: false
+
+# Prebuilt by .github/workflows/external-api-image.yml. The Supervisor pulls
+# `<image>:<version>` — so bumping `version` without a published image of that
+# tag leaves the add-on unable to resolve anything at all.
+image: ghcr.io/turzi-org/turzi-external-api-{arch}
 
 # Read and operate entities through Home Assistant itself. The Supervisor
 # proxies its API and accepts the add-on token, so there is no token to create
