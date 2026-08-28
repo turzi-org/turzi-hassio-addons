@@ -28,6 +28,9 @@ export function healthRouter(client: HaClient, pool: Pool, config: Config): Rout
         const status = !haConnected ? 'unavailable' : databaseConnected ? 'ok' : 'degraded';
         res.status(haConnected ? 200 : 503).json({
             status,
+            // Which build is actually running. Without it, confirming an
+            // update means opening the Home Assistant UI.
+            version: process.env.ADDON_VERSION || null,
             home_assistant_connected: haConnected,
             core_version: client.coreVersion() ?? null,
             database_connected: databaseConnected,

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.1
+
+- `/health` now reports the running `version`. Confirming that an update
+  actually landed previously meant opening the Home Assistant UI; it is now a
+  question the add-on answers itself. Read from `config.yaml` at boot, so there
+  is one place the version lives and nothing to keep in sync.
+
 ## 2.1.0
 
 - **A Gate log panel in the Home Assistant sidebar.** Commands and state

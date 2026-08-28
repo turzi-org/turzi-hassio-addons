@@ -7,6 +7,12 @@
 # exactly once and then never be rotated again.
 set -eu
 
+# Read before anything can exec: the standalone path leaves immediately below,
+# and a version only the add-on reports is a version you cannot check where you
+# most need to.
+ADDON_VERSION=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' /app/config.yaml 2>/dev/null || true)
+export ADDON_VERSION
+
 # Standalone mode: no Supervisor, so the environment is already complete (a
 # plain `docker run` or the compose file). One image, one entrypoint, two
 # deployments — the alternative is two Dockerfiles that drift.

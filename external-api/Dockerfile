@@ -31,6 +31,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
+# Read at boot so /health can report which version is actually running.
+COPY config.yaml /app/config.yaml
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
