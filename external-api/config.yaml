@@ -1,5 +1,5 @@
 name: Turzi External System API
-version: "2.0.1"
+version: "2.1.0"
 slug: turzi_external_api
 description: REST API for external systems to read and operate Home Assistant entities over the Turzi Protocol, with a full action and state log
 url: https://github.com/turzi-org/turzi-external-api
@@ -18,6 +18,15 @@ homeassistant_api: true
 # not have.
 services:
   - mysql:want
+
+# The operator's view, served through Home Assistant's ingress: it appears in
+# the sidebar, HA authenticates it, and it is reachable ONLY that way. Its port
+# is deliberately absent from `ports` below — the public listener carries the
+# API for the integrator, and the log view must never appear on it.
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:boom-gate
+panel_title: Gate log
 
 ports:
   8080/tcp: 8080

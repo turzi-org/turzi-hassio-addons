@@ -101,6 +101,8 @@ export TURZI_HOUSE_ID API_KEYS ALLOWED_ENTITIES ALLOWED_DOMAINS \
        COMMAND_CONFIRM_TIMEOUT_MS LOG_REQUESTS DATABASE_URL \
        HA_WS_URL HA_TOKEN
 export PORT=8080
+# Must match ingress_port in config.yaml.
+export UI_PORT=8099
 
 echo "[external-api] site=${TURZI_HOUSE_ID} home-assistant=supervisor-proxy db=${DB_NAME}"
 exec node /app/dist/index.js

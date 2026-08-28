@@ -55,6 +55,8 @@ export interface Config {
     actorEmailDomain: string;
     confirmTimeoutMs: number;
     logRequests: boolean;
+    /** Ingress listener for the operator's log view; 0 disables it. */
+    uiPort: number;
 }
 
 class ConfigError extends Error {}
@@ -165,6 +167,7 @@ export function loadConfig(): Config {
         // service returning, so this is a backstop, not a normal wait.
         confirmTimeoutMs: int('COMMAND_CONFIRM_TIMEOUT_MS', 4000),
         logRequests: bool('LOG_REQUESTS', true),
+        uiPort: int('UI_PORT', 0),
     };
 }
 

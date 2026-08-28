@@ -127,15 +127,41 @@ curl -X POST -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json'
   -d '{"action":"set_cover_position","parameters":{"position":70}}' \
   http://homeassistant.local:8080/api/v1/entities/cover/porton_demo/command
 
-# Who opened what
-curl -H "Authorization: Bearer $KEY" \
-  "http://homeassistant.local:8080/api/v1/log/commands?limit=20"
 ```
+
+To see what has been opened and by whom, use the **Gate log** panel in the
+sidebar rather than an API call — see below.
 
 A command does not return until the resulting state change arrives, so
 `"status": "confirmed"` with `"attribution": "context_id"` means the device
 actually moved and that this call is what moved it. `"executed"` means Home
 Assistant ran the service and nothing changed — closing an already-closed gate.
+
+## Seeing the log
+
+The add-on adds a **Gate log** panel to the Home Assistant sidebar. Home
+Assistant authenticates it, so there is no second password, and it is reachable
+only that way — the port it uses is deliberately not published, so the log
+never appears on the address the integrator calls.
+
+It shows what was commanded and what the gate did:
+
+- **Commands issued through this API** — when, by which key, the outcome, how
+  long the gate took to respond, and the controller's own words when something
+  failed.
+- **State changes** — *including the ones this API did not cause*. That is the
+  point of keeping them: it is how you tell an opening you are responsible for
+  from one a resident caused, and how a gap gets explained.
+
+`unattributed` in the *Caused by* column means the change carried no Home
+Assistant context. The gate's own movement ticks land there, and so does
+anything done from the Turzi app.
+
+The same data is available as JSON at `/api/v1/log/commands` and
+`/api/v1/log/states` with an API key, for reconciling against your own records.
+Do not expose those two through a public proxy: they carry every use of the
+gate, including residents', and an integrator holding a key would see all of
+it.
 
 ## Exposing it to an external system
 
@@ -165,6 +191,11 @@ limit_req_status 429;
 
 # Unauthenticated, and publishes house_id, core version and entity count.
 location = /health {
+    deny all;
+}
+
+# Every use of the gate, residents' included. Yours to read, not theirs.
+location /api/v1/log/ {
     deny all;
 }
 ```

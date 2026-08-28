@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+
+- **A Gate log panel in the Home Assistant sidebar.** Commands and state
+  changes, who caused each one, and how long the gate took — the log was being
+  recorded from the first release but could only be read with curl or SQL.
+- Served through Home Assistant ingress on its own port, so HA authenticates it
+  and it is never reachable on the address the integrator calls. Read-only by
+  construction: it issues SELECTs and offers no route that writes.
+
 ## 2.0.1
 
 - Asking for a service an entity does not support now returns 400 rather than

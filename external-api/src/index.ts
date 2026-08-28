@@ -26,6 +26,7 @@ import { HaClient } from './ha/ha-client';
 import { entitiesRouter } from './routes/entities';
 import { healthRouter } from './routes/health';
 import { logsRouter } from './routes/logs';
+import { uiRouter } from './routes/ui';
 
 async function main(): Promise<void> {
     const config = loadConfig();
@@ -54,6 +55,22 @@ async function main(): Promise<void> {
     app.use(notFoundHandler);
     app.use(errorHandler);
 
+    // The operator's view, on its own listener. Home Assistant's ingress
+    // authenticates it, so it carries no API key — which is precisely why it
+    // must not share a port with the integrator API, where the key is the only
+    // thing standing between the internet and the gate.
+    let uiServer: import('http').Server | undefined;
+    if (config.uiPort) {
+        const ui = express();
+        ui.disable('x-powered-by');
+        // No helmet CSP here: the page is inline-styled and inline-scripted,
+        // and it is served only to an already-authenticated HA session.
+        ui.use(uiRouter(pool, config));
+        uiServer = ui.listen(config.uiPort, () => {
+            console.info(`[ui] log view on :${config.uiPort} (Home Assistant ingress)`);
+        });
+    }
+
     const server = app.listen(config.port, () => {
         console.info(
             `[http] listening on :${config.port} — house=${config.houseId}, ` +
@@ -65,6 +82,7 @@ async function main(): Promise<void> {
 
     const shutdown = (signal: string) => {
         console.info(`[shutdown] ${signal} received`);
+        uiServer?.close();
         server.close(async () => {
             await client.disconnect().catch((err) => console.warn(`[shutdown] home assistant: ${err.message}`));
             await pool.end().catch((err) => console.warn(`[shutdown] db: ${err.message}`));
