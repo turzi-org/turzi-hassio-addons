@@ -140,6 +140,7 @@ export class HaClient {
     /** State changes seen but not yet classified — see RECORD_DELAY_MS. */
     private queue: QueuedState[] = [];
     private haVersion?: string;
+    private haTimeZone?: string;
 
     constructor(private readonly config: Config, private readonly recorder: Recorder) {}
 
@@ -238,6 +239,15 @@ export class HaClient {
                 // two is delivered rather than lost in the gap.
                 await this.send('subscribe_events', { event_type: 'state_changed' });
                 await this.seedStates();
+                // The building's timezone, not the viewer's. A log read from
+                // another country still has to describe when the gate opened
+                // where the gate is.
+                try {
+                    const cfg = await this.send('get_config');
+                    if (typeof cfg?.time_zone === 'string') this.haTimeZone = cfg.time_zone;
+                } catch {
+                    /* optional: the view falls back to UTC and says so */
+                }
                 console.info(`[ha] tracking ${this.entities.size} entit${this.entities.size === 1 ? 'y' : 'ies'}`);
                 onReady?.();
                 return;
@@ -305,6 +315,11 @@ export class HaClient {
 
     coreVersion(): string | undefined {
         return this.haVersion;
+    }
+
+    /** Home Assistant's configured timezone, e.g. "America/Montevideo". */
+    timeZone(): string | undefined {
+        return this.haTimeZone;
     }
 
     // -------------------------------------------------------------------------

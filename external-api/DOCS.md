@@ -144,6 +144,11 @@ Assistant authenticates it, so there is no second password, and it is reachable
 only that way — the port it uses is deliberately not published, so the log
 never appears on the address the integrator calls.
 
+Times are shown in **this building's timezone**, taken from Home Assistant's
+own configuration — not the timezone of whoever is looking. The zone is named
+above the tables. Filter by Today, the last 24 hours, 7 or 30 days, or a custom
+window typed in that same building time.
+
 It shows what was commanded and what the gate did:
 
 - **Commands issued through this API** — when, by which key, the outcome, how

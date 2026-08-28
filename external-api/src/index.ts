@@ -65,7 +65,10 @@ async function main(): Promise<void> {
         ui.disable('x-powered-by');
         // No helmet CSP here: the page is inline-styled and inline-scripted,
         // and it is served only to an already-authenticated HA session.
-        ui.use(uiRouter(pool, config));
+        ui.use(uiRouter(pool, config, client));
+        // Without this the view's own fetch gets Express's HTML error page and
+        // can only report "HTTP 400", never what was actually wrong with it.
+        ui.use(errorHandler);
         uiServer = ui.listen(config.uiPort, () => {
             console.info(`[ui] log view on :${config.uiPort} (Home Assistant ingress)`);
         });

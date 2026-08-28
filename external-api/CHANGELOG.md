@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0
+
+- **Times are shown in the building's timezone**, read from Home Assistant's
+  own configuration rather than the viewer's browser. A gate opening is an
+  event at the gate; describing it in the timezone of whoever happens to be
+  reading would be wrong the moment the log is read from anywhere else. The
+  zone is named above the tables, and the column no longer claims UTC.
+- **Date and time range filtering** — Today, last 24 hours, 7 or 30 days, or a
+  custom window typed in that same building time. The summary cards follow the
+  range, so they cannot contradict the rows beneath them, and the view says so
+  when a range holds more rows than the row limit shows.
+
 ## 2.1.1
 
 - `/health` now reports the running `version`. Confirming that an update
