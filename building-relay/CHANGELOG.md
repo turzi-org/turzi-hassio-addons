@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.9.3
+
+Three silent failures in the relay's own boot, all found by review rather than
+by anyone noticing.
+
+**Daily re-discovery had never run — in any installation.** The function that
+looks for go2rtc and Frigate was defined below the daily-refresh loop that calls
+it, and a shell only carries the functions defined before that loop forks. The
+call failed as "command not found" and was swallowed. Only the check at start-up
+ever worked, which is why discovery always appeared to be fine. So "the box looks
+at boot and once a day" is true for the first time.
+
+**A bundle without a certificate no longer leaves the relay half-configured.**
+The certificate was validated midway through writing, so a rejected bundle had
+already written part of its state.
+
+**A rejected bundle is no longer permanent.** The durable credential was written
+before the bundle was accepted, and the next boot decides whether to enrol purely
+by whether that file exists — so a bad first bundle meant enrolment was skipped
+forever and the relay never obtained a signing secret. The credential is now
+written last, and the same key can simply be tried again.
+
 ## 1.9.2
 
 Video-service discovery now probes the Docker host as well as the container's
