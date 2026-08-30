@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.10.2
+
+The add-on no longer stops when something is missing. It waits.
+
+**A wrong or spent key no longer restarts the add-on forever.** It used to exit,
+which handed the problem to the Supervisor, which started it again to fail the
+same way — one error reprinted endlessly, and a request to the platform on every
+start. Measured on a real box: ten attempts in ninety seconds, four of them
+rate-limited, and the rate-limit reply then hid the real reason. Now it says once
+what is wrong and waits. **Paste a new key into this form and the running add-on
+picks it up — no restart.**
+
+It also tells the two failures apart, because they need different remedies. A key
+the platform refuses will never work, so it stops asking and watches this form for
+a different one. A platform it cannot reach says nothing about the key, so that
+one is retried on its own. And an `api_url` that answers but is not the Turzi API
+now says so, instead of blaming the key: it goes **without** `/api/v2` at the end,
+for example `http://10.0.1.53:4000`.
+
+**A missing certificate no longer stops it either.** The certificate is issued
+elsewhere, so "not there yet" is normal on an add-on installed before the platform
+side finished — nothing you can do from here. It waits and picks the certificate
+up on its own, whether it arrives from the platform or is dropped into a mounted
+certificate directory.
+
+Also fixed: after being configured this way, the daily refresh used to keep using
+the address the add-on had at start-up — which was none — so certificates would
+have stopped renewing silently about three months later.
+
 ## 1.9.4
 
 Corrects a mistake in 1.9.3. That version changed the order of the first
