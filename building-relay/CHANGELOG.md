@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.2
+
+Video-service discovery now probes the Docker host as well as the container's
+own loopback. A relay on a bridge network — one that cannot take the host's
+ports, which is every developer workbench — was looking at its own empty
+loopback and reporting "found nothing" even with go2rtc on the same machine.
+
+
 ## 1.1.1
 
 The add-on no longer builds its own image. It pulls
