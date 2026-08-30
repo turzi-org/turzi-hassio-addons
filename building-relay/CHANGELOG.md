@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.9.4
+
+Corrects a mistake in 1.9.3. That version changed the order of the first
+enrolment so the durable credential was written only after the bundle was
+accepted. It sounded safer and was worse: the key is single-use and is spent
+before the answer reaches this box, so a bundle rejected for any reason left
+nothing on disk against a key that no longer works — and the add-on then
+restarted forever on a 401 until someone issued a new one.
+
+The credential is written first again. With it on disk the box retries by
+itself and comes up on its own once whatever was missing arrives, with no new
+key and no visit. Anyone who installed 1.9.3 and saw it loop on a 401 needs a
+fresh key from the TCM once; after that this version behaves.
+
+The other half of 1.9.3 stands: a bundle missing its certificate is still
+rejected before anything is written.
+
 ## 1.9.3
 
 Three silent failures in the relay's own boot, all found by review rather than
