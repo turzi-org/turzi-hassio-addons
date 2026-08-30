@@ -21,7 +21,7 @@
 # Bumping this line is how the add-on picks up a new image. Keep it
 # quoted — unquoted 1.10 parses as the float 1.1.
 name: Turzi Edge Media
-version: "1.6.0"
+version: "1.7.0"
 slug: turzi_building_relay
 description: Camera video for Turzi — served on your LAN, and out to the app through a connection this add-on opens itself. No port forwarding, no VPN.
 url: https://github.com/turzi-org/turzi-hassio-addons
@@ -42,6 +42,12 @@ init: false
 # Each request's hostname encodes which video server to reach, so the
 # relay needs the building's LAN directly. This also makes any `ports:`
 # mapping inert — the listening port is not remappable from the UI.
+# Lets the add-on ask the Supervisor which other add-ons are running and where
+# they listen, so nobody has to read an IP off a router to point an integration
+# at go2rtc. It only READS, and what it finds is reported to the TCM as
+# suggestions -- the operator still chooses.
+hassio_api: true
+
 host_network: true
 
 options:
