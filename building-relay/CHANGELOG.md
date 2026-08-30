@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.11.1
+
+The add-on now introduces itself, so the TCM stops asking you for things it can
+find out.
+
+On its first boot it reports how it is attached to the network, the addresses
+this machine has (with the interface each belongs to), and which video servers
+answer beside it. The wizard then asks you to **confirm** an address instead of
+looking one up: with a single obvious candidate it is one click, and with several
+it shows which one the machine uses to reach the internet.
+
+**Findings no longer carry an address**, which fixes a trap. Installing before an
+address had been entered used to store an empty result with a fresh timestamp —
+the TCM would say the add-on looked and found nothing, and it would not look
+again for a day. It now reports what it found regardless, and the address is
+worked out when the screen is read.
+
+It also says when a video server answers only on the machine's own loopback. That
+cannot be reached through the relay, and the TCM now says so instead of offering
+it and producing a stream that times out.
+
 ## 1.10.2
 
 The add-on no longer stops when something is missing. It waits.
