@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.13.1
+
+Arregla la escritura de la configuración de Frigate, que en 1.13.0 nunca llegaba
+a aplicarse: faltaba un parámetro que Frigate exige y devolvía un error que el
+asistente no te mostraba. Ahora, si algo falla, te lo dice.
+
+También se corrigió la comprobación que evita pisar cambios: comparaba el archivo
+consigo mismo de dos maneras distintas, así que podía rechazar escrituras
+legítimas. Y el add-on ya no escribe nada si lo que devolvió Frigate no parece
+una configuración —un archivo vacío, o sólo comentarios—: antes eso pasaba los
+controles y podía reemplazar toda la configuración del edificio.
+
 ## 1.13.0
 
 Ya no hace falta editar el archivo de configuración de Frigate a mano.
