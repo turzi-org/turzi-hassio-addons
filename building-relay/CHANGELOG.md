@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.12.0
+
+The TCM can now ask this add-on to do two things, so you stop having to come here
+for them.
+
+**"Que mire ahora"** — look again for go2rtc and Frigate right away, instead of
+waiting for the next scheduled check. This is the one you want after installing
+Frigate or publishing its port.
+
+**"Reiniciar el equipo"** — restart the add-on from the TCM.
+
+Both arrive on the add-on's own outbound connection to Turzi, so nothing needs to
+reach into the building and no port has to be opened. It asks about once a
+minute, and a request that goes unanswered for ten minutes is dropped rather than
+acted on late — a box that was switched off should come back and serve video, not
+restart because of a button pressed while it was away.
+
+You can also remove the relay from the TCM now and start the installation over.
+The add-on notices on its own and goes back to waiting for a new key; there is
+nothing to uninstall or clean up here.
+
 ## 1.11.3
 
 Two cosmetic fixes from the first real install.
