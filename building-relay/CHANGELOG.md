@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.2
+
+Fixes the add-on stopping on its very first start when the platform had not
+issued its certificate yet. It enrolled correctly, then exited before reaching
+the part that waits — so it only settled down on the second start. Now it waits
+straight away and picks the certificate up on its own when it arrives, with no
+restart and no new key.
+
 ## 1.11.1
 
 The add-on now introduces itself, so the TCM stops asking you for things it can
