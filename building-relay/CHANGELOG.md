@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.11.3
+
+Two cosmetic fixes from the first real install.
+
+Frigate is now called **Frigate** in the list of things it found, instead of
+`frigate` — the internal name was being used as the label. go2rtc keeps its
+lowercase spelling, which is how it is written.
+
+And the log no longer ends with `unknown process … exited with code 0`. That was
+this add-on's own follow-up check finishing: nginx runs as the main process, so
+it inherited the job and reported a process it could not name. Nothing was
+failing, but it is not a line anyone should have to ask about during an install.
+
 ## 1.11.2
 
 Fixes the add-on stopping on its very first start when the platform had not
