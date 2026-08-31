@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.2
+
+Cuando Frigate rechaza una configuración, ahora el TCM te muestra exactamente
+qué respondió Frigate en lugar de un "no se pudo".
+
+El add-on también informa su propia versión, que aparece en el TCM junto al modo.
+Hasta ahora la versión sólo existía como una etiqueta de la imagen, invisible
+tanto para el add-on como para vos — así que una falla causada por una versión
+vieja se veía igual que una falla causada por un error.
+
 ## 1.13.1
 
 Arregla la escritura de la configuración de Frigate, que en 1.13.0 nunca llegaba
