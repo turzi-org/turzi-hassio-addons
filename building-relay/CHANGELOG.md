@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.1
+
+Quitar el relay desde el TCM ahora funciona de punta a punta.
+
+Hasta esta versión, si quitabas el relay en el TCM y generabas una clave nueva,
+el add-on seguía usando la credencial vieja — que la plataforma ya no reconocía —
+y nunca leía la clave nueva de su configuración. Quedaba rechazado en un bucle,
+y la única salida era borrarle los datos a mano.
+
+Ahora, cuando la plataforma deja de reconocerlo, lo dice una vez, descarta la
+credencial vieja y canjea la clave que tenga cargada en la configuración — todo
+en el mismo arranque. Si estaba corriendo cuando lo quitaron, se da cuenta solo
+en un par de minutos y se reinicia para volver a empezar.
+
 ## 1.12.0
 
 The TCM can now ask this add-on to do two things, so you stop having to come here
