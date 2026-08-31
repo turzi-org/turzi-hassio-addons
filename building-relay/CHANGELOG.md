@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.13.0
+
+Ya no hace falta editar el archivo de configuración de Frigate a mano.
+
+Desde el TCM, en la integración de Frigate, ahora hay un asistente que hace el
+trabajo: este add-on lee la configuración actual de Frigate, la plataforma le
+agrega los datos del servidor MQTT de la comunidad, y el add-on la escribe y
+reinicia Frigate. Vos sólo confirmás.
+
+**No se toca nada más del archivo.** Tus cámaras, máscaras y comentarios quedan
+exactamente como estaban: el add-on no interpreta el archivo, sólo lo transporta;
+la plataforma arma el cambio con un lector de YAML que conserva todo lo que no le
+pidieron modificar, y se niega a escribir cualquier resultado que tenga menos
+cámaras que el original.
+
+Si alguien edita la configuración de Frigate mientras tanto, la escritura se
+cancela en lugar de pisar los cambios. Y si Frigate ya está conectado a otro
+servidor MQTT, el asistente te lo dice y te deja decidir: no lo reemplaza solo.
+
+La configuración manual sigue disponible, a un clic, para cuando la prefieras.
+
 ## 1.12.1
 
 Quitar el relay desde el TCM ahora funciona de punta a punta.
