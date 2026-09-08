@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.14.0
+
+Las miniaturas de las cámaras ahora se piden en el tamaño en el que realmente
+se ven. Antes se traía siempre la imagen entera —unos 70 KB para una tarjeta de
+200 píxeles de alto— y ahora esa misma tarjeta trae alrededor de 21 KB, así que
+las grillas con muchas cámaras cargan bastante más rápido y el equipo del
+edificio trabaja menos.
+
+El tamaño viaja firmado dentro del pedido: sólo se sirven cuatro medidas y
+cualquier otra cosa se rechaza sin llegar a la cámara, para que nadie pueda
+usar un enlace para hacerle trabajo de más al equipo.
+
 ## 1.13.2
 
 Cuando Frigate rechaza una configuración, ahora el TCM te muestra exactamente
