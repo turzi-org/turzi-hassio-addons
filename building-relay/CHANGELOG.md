@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.15.0
+
+El video en vivo de las cámaras ahora también se sirve en HLS, que es el
+formato que reproducen los iPhone. Hasta ahora el vivo no funcionaba en iOS:
+la app mostraba la imagen fija y el vivo quedaba en negro, porque el formato
+anterior le pedía al reproductor algo que en iPhone no está disponible.
+
+En Android no cambia nada visible — es el mismo vivo por otro camino — y las
+miniaturas siguen igual.
+
+No hay nada que configurar. La app pide el formato según lo que este equipo
+sabe servir, así que un edificio que todavía no actualizó sigue andando como
+hasta ahora.
+
 ## 1.14.0
 
 Las miniaturas de las cámaras ahora se piden en el tamaño en el que realmente
