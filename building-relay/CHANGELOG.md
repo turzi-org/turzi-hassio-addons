@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.17.0
+
+Arregla un detalle de 1.16.0: cuando el equipo del edificio no encontraba un
+pedacito del video (algo normal y pasajero en una transmisión en vivo), rearmaba
+toda la transmisión en lugar de dejar que el reproductor siguiera. Se veía como
+un salto o un parpadeo cada tanto.
+
+Ahora ese caso se resuelve solo, sin cortar nada.
+
+Si tenés 1.16.0 el vivo ya funciona; esto lo hace más parejo. No hay apuro y no
+hay nada que configurar.
+
 ## 1.16.0
 
 El video en vivo ya no se corta cuando dejás la app un momento.
