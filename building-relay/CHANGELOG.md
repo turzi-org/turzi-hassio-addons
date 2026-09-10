@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.19.0
+
+**Actualizá esta versión.** Corrige un error que rompía el video en vivo por
+completo en 1.16.0, 1.17.0 y 1.18.0: la lista que el reproductor usa para pedir
+los pedacitos de video salía con un carácter de más pegado al último, así que el
+reproductor pedía algo que no existe, recibía un error y abandonaba.
+
+Se veía como un vivo que arranca y muere a los pocos segundos, sin decir por qué.
+
+Mientras no actualices, la plataforma vuelve a mandarte el formato anterior en
+lugar del que este equipo no puede servir bien — así que el vivo sigue andando
+donde andaba antes, pero en iPhone no.
+
 ## 1.18.0
 
 El equipo del edificio volvió a incluir un dato que el reproductor usa para
