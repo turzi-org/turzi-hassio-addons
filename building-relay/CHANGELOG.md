@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.20.0
+
+**Esta es la versión que hace andar el vivo.** Junto con 1.19.0 corrige lo que lo
+rompía:
+
+- El equipo ofrecía el pedacito de video que todavía estaba grabando, así que el
+  reproductor se lo llevaba a medio escribir y no podía mostrar nada.
+- Y cada veinte segundos reiniciaba la transmisión por dentro, lo que el
+  reproductor interpretaba como que el video volvía para atrás.
+
+Medido después del arreglo: un minuto de video continuo, sin un solo salto.
+
+Si venías de 1.16, 1.17, 1.18 o 1.19, actualizá: hasta que lo hagas la
+plataforma te sigue mandando el formato viejo, que en iPhone no se ve.
+
 ## 1.19.0
 
 **Actualizá esta versión.** Corrige un error que rompía el video en vivo por
