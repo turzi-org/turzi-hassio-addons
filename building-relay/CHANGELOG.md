@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.16.0
+
+El video en vivo ya no se corta cuando dejás la app un momento.
+
+En 1.15.0 el vivo aguantaba unos cinco segundos sin mirarlo: si minimizabas la
+app, entrabas al ascensor o la conexión se trababa, la transmisión se cortaba
+para siempre y había que salir de la cámara y volver a entrar. Ahora el equipo
+del edificio se encarga de rearmarla solo, sin que el reproductor se entere.
+
+Medido acá: un corte de diez segundos en medio de un minuto de video, y el
+video siguió sin una sola falla.
+
+Actualizá esta versión si ya tenías 1.15.0 — es la que hace que el vivo sea
+usable de verdad en iPhone. No hay nada que configurar.
+
 ## 1.15.0
 
 El video en vivo de las cámaras ahora también se sirve en HLS, que es el
