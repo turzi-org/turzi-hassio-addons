@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.18.0
+
+El equipo del edificio volvió a incluir un dato que el reproductor usa para
+saber que puede mostrar el video antes de intentarlo. En 1.16.0 y 1.17.0 ese
+dato faltaba, así que algunos reproductores —los de iPhone en particular— tenían
+que averiguarlo probando.
+
+Puede que no notes ninguna diferencia. Si el vivo te tardaba en arrancar o se
+quedaba pensando, esto es lo que faltaba mirar.
+
 ## 1.17.0
 
 Arregla un detalle de 1.16.0: cuando el equipo del edificio no encontraba un
