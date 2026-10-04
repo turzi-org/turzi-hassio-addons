@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.21.0
+
+Cuando varias personas miran la misma cámara al mismo tiempo, el equipo ahora
+le pide la imagen al servidor de video una sola vez por segundo y se la reparte
+a todas, en vez de pedirla una vez por persona. Vale para las pantallas del
+edificio y para los teléfonos que miran desde afuera.
+
+Con varias pantallas de recepción mirando la misma cámara, el servidor de video
+hace una fracción del trabajo de antes. Nadie ve una imagen de más de un segundo
+de antigüedad, y una cámara que deja de responder se sigue viendo caída: no se
+queda congelada en la última imagen.
+
 ## 1.20.0
 
 **Esta es la versión que hace andar el vivo.** Junto con 1.19.0 corrige lo que lo
