@@ -1,0 +1,43 @@
+# Turzi Bridge Installer — puts the Turzi bridge into this Home Assistant.
+#
+# The bridge is a custom integration: a folder under custom_components that
+# somebody has to put there and replace on every release. This add-on is that
+# somebody. The Turzi Stack installs it when it sets a building up
+# (turzi-apps/TURZI_SUPERVISOR.md §4.2); it can also be installed by hand.
+#
+# `version` is the bridge's version this add-on carries, and the Dockerfile's
+# BRIDGE_VERSION must say the same: the image is built on the machine, and the
+# build fails if the bridge it fetched is another one. A change to the add-on
+# alone, with the same bridge, adds a fourth number (2026.10.3.1). Keep it
+# quoted.
+name: Turzi Bridge Installer
+version: "2026.10.3"
+slug: turzi_bridge_installer
+description: Puts the Turzi bridge in this Home Assistant and replaces it when a new version comes. Nothing to copy by hand.
+url: https://github.com/turzi-org/turzi-hassio-addons
+
+arch:
+  - amd64
+  - aarch64
+
+# It keeps running, doing nothing, on purpose: the Supervisor starts an add-on
+# again after an update only if it was running, and starting is when the new
+# bridge is put in place.
+startup: application
+boot: auto
+
+# Home Assistant's configuration folder, at /homeassistant, to write
+# custom_components/turzi_bridge. Nothing else is read or written.
+map:
+  - type: homeassistant_config
+    read_only: false
+
+# To ask for a restart of Home Assistant, which is the only way it loads a
+# custom integration's new code. The role allows /core/* and nothing more.
+hassio_api: true
+hassio_role: homeassistant
+
+options:
+  restart_home_assistant: true
+schema:
+  restart_home_assistant: bool

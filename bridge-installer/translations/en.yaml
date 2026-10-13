@@ -1,0 +1,4 @@
+configuration:
+  restart_home_assistant:
+    name: Restart Home Assistant when the bridge changes
+    description: Home Assistant only runs a new bridge after a restart. Turn this off to choose the moment yourself.

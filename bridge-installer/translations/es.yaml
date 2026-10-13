@@ -1,0 +1,4 @@
+configuration:
+  restart_home_assistant:
+    name: Reiniciar Home Assistant cuando cambia el puente
+    description: Home Assistant solo usa un puente nuevo después de reiniciar. Apagalo para elegir vos el momento.
