@@ -24,6 +24,14 @@ bridge is put in place.
 It does not connect the bridge to Turzi. That is done by the Turzi Stack, or by
 hand in **Settings → Devices & services → Add integration → turzi Bridge**.
 
+## Watchdog
+
+Keep Home Assistant's **Watchdog** switch for this add-on on. The add-on has
+to be running for an update of it to put the new bridge in place, and with the
+watchdog on Home Assistant starts it again if it ever stops. The Turzi Stack
+turns it on when it installs the add-on; installed by hand, turn it on
+yourself.
+
 ## Settings
 
 **Restart Home Assistant when the bridge changes**, on by default. Turn it off
