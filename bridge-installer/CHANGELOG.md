@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.10.5
+
+Carries the Turzi bridge 2026.10.5, which can find its connection again with
+its own credential: a Home Assistant that is already the building's
+reconnects with no key.
+
 ## 2026.10.4
 
 Carries the Turzi bridge 2026.10.4, which reaches a Turzi Stack in the
