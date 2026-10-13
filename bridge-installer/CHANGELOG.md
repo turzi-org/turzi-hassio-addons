@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.10.7
+
+Carries the Turzi bridge 2026.10.7: a Home Assistant that restarts is shown
+as away while it does, and the bridge says which version it is each time it
+connects, which is how a Turzi Stack checks that a bridge it had replaced
+came back.
+
 ## 2026.10.6.1
 
 The same bridge, 2026.10.6. New, where a Turzi Stack set this add-on up: it

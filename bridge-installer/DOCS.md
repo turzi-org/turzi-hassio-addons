@@ -69,7 +69,9 @@ restarts. Home Assistant's own *Auto update* switch for this add-on is off
 unless you turn it on, so nothing restarts by itself.
 
 Where a Turzi Stack set it up, updating the add-on only brings the new bridge
-here. The Stack says when it goes in.
+here, and the Stack says when it goes in. So the Stack turns *Auto update* on
+for this add-on: new bridges arrive by themselves, and none is put in place,
+and Home Assistant is not restarted, until the Stack says so.
 
 ## If the bridge was installed with HACS
 
