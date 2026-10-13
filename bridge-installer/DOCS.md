@@ -24,16 +24,25 @@ bridge is put in place.
 It does not connect the bridge to Turzi. That is done by the Turzi Stack, or by
 hand in **Settings → Devices & services → Add integration → turzi Bridge**.
 
-## The one setting
+## Settings
 
 **Restart Home Assistant when the bridge changes**, on by default. Turn it off
 to restart at a moment of your choosing: the new bridge runs after that restart.
 
+**Turzi Stack address**, written by the Turzi Stack when it installs this
+add-on. Nothing uses it yet. Leave it as it is.
+
 ## Updates
 
-The version of this add-on is the version of the bridge it carries. Updating
-the add-on updates the bridge. Home Assistant's own *Auto update* switch for
-this add-on is off unless you turn it on, so nothing restarts by itself.
+The first three numbers of this add-on's version are the bridge it carries.
+Updating the add-on updates the bridge. Home Assistant's own *Auto update*
+switch for this add-on is off unless you turn it on, so nothing restarts by
+itself.
+
+Where a Turzi Stack installed it, the plan is for the Stack to decide when the
+bridge is replaced, building by building and at a chosen hour, and for this
+add-on to ask it. That is what the Stack's address is for. Until then, updates
+are pressed here.
 
 ## If the bridge was installed with HACS
 

@@ -11,7 +11,7 @@
 # alone, with the same bridge, adds a fourth number (2026.10.3.1). Keep it
 # quoted.
 name: Turzi Bridge Installer
-version: "2026.10.3"
+version: "2026.10.3.1"
 slug: turzi_bridge_installer
 description: Puts the Turzi bridge in this Home Assistant and replaces it when a new version comes. Nothing to copy by hand.
 url: https://github.com/turzi-org/turzi-hassio-addons
@@ -37,7 +37,12 @@ map:
 hassio_api: true
 hassio_role: homeassistant
 
+# `stack_url` is written by the Turzi Stack when it installs this add-on: where
+# the Stack is in the building. Nothing asks it anything yet; it is there so
+# that the Turzi Supervisor can decide when the bridge is replaced
+# (TURZI_SUPERVISOR.md §4.2) without anybody signing in here a second time.
 options:
   restart_home_assistant: true
 schema:
   restart_home_assistant: bool
+  stack_url: url?

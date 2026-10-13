@@ -20,6 +20,8 @@ later() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail 
 
 carried="$(version "$SOURCE")"
 installed="$(version "$TARGET")"
+stack="$(sed -n 's/.*"stack_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$OPTIONS" 2>/dev/null || true)"
+if [ -n "$stack" ]; then log "set up by the Turzi Stack at $stack"; fi
 
 if [ ! -d "$CONFIG" ]; then
   log "Home Assistant's configuration folder is not at $CONFIG: nothing was done"

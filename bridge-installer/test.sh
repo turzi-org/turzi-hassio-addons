@@ -64,6 +64,9 @@ set_version 2026.9.0
 run "$OFF"
 expect "set not to restart, it replaces and leaves the restart to you" '[ "$(there)" = "$CARRIED" ] && [ "$(restarts)" = 0 ]'
 
+run '{"restart_home_assistant": true, "stack_url": "http://10.0.0.5"}'
+expect "it says which Turzi Stack set it up, when one did" 'echo "$LOG" | grep -q "set up by the Turzi Stack at http://10.0.0.5$"'
+
 set_version 2099.1.0
 run "$ON"
 expect "a newer bridge is left as it is" '[ "$(there)" = 2099.1.0 ] && [ "$(restarts)" = 0 ]'

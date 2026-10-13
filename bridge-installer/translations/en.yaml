@@ -2,3 +2,6 @@ configuration:
   restart_home_assistant:
     name: Restart Home Assistant when the bridge changes
     description: Home Assistant only runs a new bridge after a restart. Turn this off to choose the moment yourself.
+  stack_url:
+    name: Turzi Stack address
+    description: Written by the Turzi Stack when it installs this add-on. Leave it as it is.
