@@ -18,9 +18,15 @@ https://github.com/turzi-org/turzi-hassio-addons
   Protocol on MQTT. Records every action and every observed state in MariaDB.
   A stopgap until the Turzi v2 API offers the same thing with real identity.
 
-- **[Turzi Building Relay](building-relay/)** — the building's media
-  relay for the Turzi local media path: serves signed camera
-  snapshot/MP4/MSE media on port 443 of the HA host, so TCM viewers on
-  the building LAN never touch the cloud relay. Auto-provisions with a
-  single-use key from the TCM and keeps its certificates current on
-  its own.
+- **[Turzi Bridge Installer](bridge-installer/)** — puts the Turzi bridge
+  into this Home Assistant and keeps it there. A Turzi Stack in the building
+  installs it by itself and says when a new bridge goes in; it can also be
+  installed by hand.
+
+## Retired
+
+- **Turzi Edge Media** (the building relay) was removed on 2026-10-13. A
+  building's camera relay now runs on its Turzi Stack, with the Stack's own
+  certificate, and is no longer installed in Home Assistant. A Home Assistant
+  that still has it should uninstall it: it can no longer enrol, and nothing
+  here updates it.
