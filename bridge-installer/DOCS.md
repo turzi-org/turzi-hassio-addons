@@ -17,9 +17,28 @@ When it starts, it compares the bridge it carries with the one in
 - the same one: nothing;
 - a newer one: nothing. Somebody chose it, and it stays.
 
-Then it stays running and does nothing. It has to: an add-on that is not
-running is not started again after an update, and starting is when the new
-bridge is put in place.
+Then it stays running. It has to: an add-on that is not running is not started
+again after an update, and starting is when the new bridge is put in place.
+
+## Where a Turzi Stack set it up
+
+It asks the Stack first, once a minute, and does what the Stack says:
+
+- **install** the bridge this add-on carries, and restart Home Assistant. The
+  bridge it replaces is kept;
+- **wait**, and why: another part of the building is being updated, a call is
+  in progress, the bridge this add-on carries is not the building's yet;
+- **put the previous one back**, when the new bridge did not come back after
+  the restart.
+
+So updating this add-on does not restart Home Assistant by itself any more: it
+brings the new bridge here, and the Stack chooses the moment. The bridge is
+always the one this add-on carries; the Stack never sends one.
+
+A Home Assistant with no bridge at all gets it at once, with or without the
+Stack's answer. If the Stack does not answer, a bridge that is there stays as
+it is. And whatever the Stack says, a newer bridge than this add-on's is never
+replaced by it.
 
 It does not connect the bridge to Turzi. That is done by the Turzi Stack, or by
 hand in **Settings → Devices & services → Add integration → turzi Bridge**.
@@ -38,19 +57,19 @@ yourself.
 to restart at a moment of your choosing: the new bridge runs after that restart.
 
 **Turzi Stack address**, written by the Turzi Stack when it installs this
-add-on. Nothing uses it yet. Leave it as it is.
+add-on. It is where this add-on asks before it replaces a bridge. Leave it as
+it is; emptied, the add-on behaves as one installed by hand.
 
 ## Updates
 
 The first three numbers of this add-on's version are the bridge it carries.
-Updating the add-on updates the bridge. Home Assistant's own *Auto update*
-switch for this add-on is off unless you turn it on, so nothing restarts by
-itself.
 
-Where a Turzi Stack installed it, the plan is for the Stack to decide when the
-bridge is replaced, building by building and at a chosen hour, and for this
-add-on to ask it. That is what the Stack's address is for. Until then, updates
-are pressed here.
+Installed by hand, updating the add-on updates the bridge, and Home Assistant
+restarts. Home Assistant's own *Auto update* switch for this add-on is off
+unless you turn it on, so nothing restarts by itself.
+
+Where a Turzi Stack set it up, updating the add-on only brings the new bridge
+here. The Stack says when it goes in.
 
 ## If the bridge was installed with HACS
 

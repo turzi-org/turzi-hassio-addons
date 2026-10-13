@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.6.1
+
+The same bridge, 2026.10.6. New, where a Turzi Stack set this add-on up: it
+asks the Stack before it replaces a bridge. Updating the add-on no longer
+restarts Home Assistant by itself; the Stack says when the new bridge goes in,
+checks that it comes back, and has the previous one put back if it does not.
+Installed by hand, nothing changes.
+
 ## 2026.10.6
 
 Carries the Turzi bridge 2026.10.6: an entity renamed in Home Assistant stays
