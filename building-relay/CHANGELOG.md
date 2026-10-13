@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.0
+
+Nothing changes for this add-on. The image learned two things for where it
+runs under a Turzi Stack: a port of its choosing, and a certificate that is
+handed to it and renewed by the Stack.
+
 ## 1.21.0
 
 Cuando varias personas miran la misma cámara al mismo tiempo, el equipo ahora
