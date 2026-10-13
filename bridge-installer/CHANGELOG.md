@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026.10.6
+
+Carries the Turzi bridge 2026.10.6: an entity renamed in Home Assistant stays
+the same entity for Turzi.
+
 ## 2026.10.5
 
 Carries the Turzi bridge 2026.10.5, which can find its connection again with
