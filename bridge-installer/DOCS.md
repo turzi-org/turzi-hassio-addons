@@ -60,6 +60,16 @@ to restart at a moment of your choosing: the new bridge runs after that restart.
 add-on. It is where this add-on asks before it replaces a bridge. Leave it as
 it is; emptied, the add-on behaves as one installed by hand.
 
+**Other Turzi integrations**: tick the ones this building uses (Akuvox,
+Hikvision, alarmo, the thermostat) and they are put in beside the bridge when
+the add-on starts, with one restart of Home Assistant if that changed
+anything. You choose them here; the Turzi Stack never does. One you untick is
+left where it is, since Home Assistant may still use it: remove it from
+`custom_components` yourself. A newer copy put in with HACS stays, and stops
+being updated from here. Only the installer image Turzi builds carries them;
+built on this machine, the add-on carries the bridge alone and says so in its
+log.
+
 ## Updates
 
 The first three numbers of this add-on's version are the bridge it carries.
