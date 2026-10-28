@@ -5,3 +5,6 @@ configuration:
   stack_url:
     name: Turzi Stack address
     description: Written by the Turzi Stack when it installs this add-on. Leave it as it is.
+  integrations:
+    name: Other Turzi integrations
+    description: Put in place beside the bridge. Written by the Turzi Stack from what the building has.
