@@ -1,0 +1,16 @@
+# The installer as CI publishes it, private (turzi-apps PRIVATE_IMAGES.md §7.3): the same add-on, with the
+# bridge's code coming from a checkout CI made with a read token, never from a public download. The build
+# context `bridge` is that checkout, at the commit `Dockerfile` pins:
+#
+#   docker build -f Dockerfile.prebuilt --build-context bridge=<checkout> --build-arg BRIDGE_VERSION=<v> .
+#
+# `Dockerfile` stays what Home Assistant builds on the machine until config.yaml names the published image.
+FROM alpine:3.22
+ARG BRIDGE_VERSION
+COPY --from=bridge custom_components/turzi_bridge /opt/turzi/turzi_bridge
+RUN test -n "${BRIDGE_VERSION}" \
+ && grep -q "\"version\": \"${BRIDGE_VERSION}\"" /opt/turzi/turzi_bridge/manifest.json \
+ && rm -rf /opt/turzi/turzi_bridge/__pycache__
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+CMD ["/run.sh"]
