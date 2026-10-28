@@ -5,3 +5,6 @@ configuration:
   stack_url:
     name: Dirección de Turzi Stack
     description: La escribe Turzi Stack cuando instala este complemento. Déjala como está.
+  integrations:
+    name: Otras integraciones de Turzi
+    description: Se instalan junto al puente. Las elige Turzi Stack según lo que tiene el edificio.

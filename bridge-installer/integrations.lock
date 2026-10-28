@@ -1,0 +1,9 @@
+# The integrations the prebuilt installer carries beside the bridge (turzi-apps
+# PRIVATE_IMAGES.md §7.3.3), each at one commit: a tag can be moved, a commit
+# cannot. The bridge's own pin stays in Dockerfile, which both builds share.
+#
+# <folder under custom_components>  <turzi-org repository>  <commit>  <the version its manifest says>
+local_akuvox      homeassistant-local-akuvox         0be850f2156c65c886dfb3180a4e443eede1683a  0.1.0
+local_hikvision   ha-hikvision-doorbell-integration  64b43685f903fd13a70e5f1a0e2af822d78bed9b  0.1.0
+alarmo            turzi-alarmo                       810c40cfa416688d0a86ef7a4fbe5431276484be  1.10.22
+turzi_thermostat  turzi-smart-thermostat             40818d907478425941965c3b02d469b08a0b996e  0.1.0

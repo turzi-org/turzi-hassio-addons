@@ -11,7 +11,8 @@
 # add-on's own: the Stack gives the moment, never the code.
 set -eu
 
-SOURCE=/opt/turzi/turzi_bridge
+CARRIES="${CARRIES_DIR:-/opt/turzi}"   # what this installer carries, one folder per integration
+SOURCE="$CARRIES/turzi_bridge"
 CONFIG="${HOMEASSISTANT_CONFIG:-/homeassistant}"
 TARGET="$CONFIG/custom_components/turzi_bridge"
 SUPERVISOR="${SUPERVISOR_URL:-http://supervisor}"
@@ -32,15 +33,21 @@ field() { printf '%s' "$1" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"
 restarts() { ! grep -q '"restart_home_assistant"[[:space:]]*:[[:space:]]*false' "$OPTIONS" 2>/dev/null; }
 held() { grep -qx "$1" "$HELD" 2>/dev/null; }
 
+# $1 = the folder to put at $2, written beside it and swapped in. What was
+# there is left at $2.old, for the caller to keep or remove.
+swap() {
+  mkdir -p "$CONFIG/custom_components"
+  rm -rf "$2.new" "$2.old"
+  cp -R "$1" "$2.new"
+  if [ -d "$2" ]; then mv "$2" "$2.old"; fi
+  mv "$2.new" "$2"
+}
+
 # $1 = the folder to put in place. Written beside the bridge and swapped in,
 # so Home Assistant never finds half a bridge. With `keep`, the one it
 # replaces is kept, to be put back if the new one is not well.
 place() {
-  mkdir -p "$CONFIG/custom_components"
-  rm -rf "$TARGET.new" "$TARGET.old"
-  cp -R "$1" "$TARGET.new"
-  if [ -d "$TARGET" ]; then mv "$TARGET" "$TARGET.old"; fi
-  mv "$TARGET.new" "$TARGET"
+  swap "$1" "$TARGET"
   if [ "${2:-}" = keep ] && [ -d "$TARGET.old" ]; then
     rm -rf "$KEPT" "$TARGET.old/__pycache__"
     mkdir -p "$(dirname "$KEPT")"
@@ -50,6 +57,7 @@ place() {
 }
 
 restart_home_assistant() {
+  owed=""
   if restarts; then
     log "restarting Home Assistant, which is how it loads the bridge"
     # In the background: the call answers when Home Assistant is back.
@@ -58,6 +66,38 @@ restart_home_assistant() {
   else
     log "Home Assistant was not restarted, as this add-on is set: it runs the new bridge after its next restart"
   fi
+}
+
+# The other integrations this installer carries (integrations.lock), each one
+# the add-on's options list: put in place when the add-on starts, which is
+# after every update of it, by hand or by the Turzi Stack. One that is newer
+# there, put in with HACS or by hand, stays. One the options stop listing is
+# left where it is: its configuration in Home Assistant may still use it. A
+# change owes Home Assistant one restart, shared with the bridge's.
+chosen() {
+  tr -d '\n' < "$OPTIONS" 2>/dev/null | sed -n 's/.*"integrations"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | tr -d '" ' | tr ',' '\n'
+}
+others() {
+  for name in $(chosen); do
+    case "$name" in
+      turzi_bridge) continue ;;
+      *[!a-z0-9_]*|"") log "\"$name\" in the options is not an integration's name: left out"; continue ;;
+    esac
+    from="$CARRIES/$name"; to="$CONFIG/custom_components/$name"
+    if [ ! -f "$from/manifest.json" ]; then
+      log "$name is asked for, and this installer does not carry it"; continue
+    fi
+    have="$(version "$to")"; carries="$(version "$from")"
+    if [ -n "$have" ] && later "$have" "$carries"; then
+      log "$name there is $have, newer than the $carries this add-on carries: left as it is"
+    elif [ -d "$to" ] && [ "$(print_of "$from")" = "$(print_of "$to")" ]; then
+      log "$name $carries is in place"
+    else
+      swap "$from" "$to"; rm -rf "$to.old"
+      log "$name $carries was put in place${have:+, replacing $have}"
+      owed=yes
+    fi
+  done
 }
 
 # Installed by hand: the bridge goes in when the add-on starts.
@@ -74,6 +114,7 @@ by_itself() {
     log "the bridge $carried was put in place${installed:+, replacing $installed}"
     restart_home_assistant
   fi
+  if [ -n "$owed" ]; then restart_home_assistant; fi
 }
 
 ask() {   # what is there now -> the Stack's answer, or nothing when it does not answer
@@ -127,6 +168,8 @@ follow_the_stack() {
           log "the Turzi Stack at $stack does not answer: the bridge there stays as it is"
         fi ;;
     esac
+    # What others() put in place, when this answer did not restart Home Assistant already.
+    if [ -n "$owed" ]; then restart_home_assistant; fi
     said="$now"
     sleep "$ASK_EVERY" & wait $!
   done
@@ -138,9 +181,10 @@ installed="$(version "$TARGET")"
 stack="$(sed -n 's/.*"stack_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$OPTIONS" 2>/dev/null || true)"
 stack="${stack%/}"
 
+owed=""
 if [ ! -d "$CONFIG" ]; then
   log "Home Assistant's configuration folder is not at $CONFIG: nothing was done"
-elif [ -n "$stack" ]; then
+elif others; [ -n "$stack" ]; then
   log "set up by the Turzi Stack at $stack"
   follow_the_stack
 else

@@ -1,8 +1,9 @@
 name: bridge-installer image
 
 # The installer, prebuilt and private (turzi-apps PRIVATE_IMAGES.md §7.3), so the integrations' repositories
-# can go private: CI reads the bridge with a read token and puts it in the image; Home Assistant then pulls
-# the image with a credential the Turzi Stack gives it, instead of building the add-on from a public download.
+# can go private: CI reads the bridge and the integrations in integrations.lock with a read token and puts
+# them in the image; Home Assistant then pulls the image with a credential the Turzi Stack gives it, instead
+# of building the add-on from a public download.
 #
 # Only by hand until the first run is good and the package is made private (a package a public repository
 # publishes starts public). Then config.yaml gains `image:`, and pushes to master publish it too.
@@ -55,13 +56,34 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v5
-        with:
-          repository: turzi-org/turzi-bridge-for-home-assistant
-          ref: ${{ steps.v.outputs.commit }}
-          token: ${{ secrets.INTEGRATIONS_READ_TOKEN }}
-          path: .integrations/bridge
-          persist-credentials: false
+      # The bridge at Dockerfile's pin and the others at integrations.lock's, each one's folder under
+      # custom_components copied to .integrations/<folder>, and its manifest checked against the version pinned.
+      # The token goes in a header for each fetch and is written nowhere.
+      - name: Fetch the integrations
+        env:
+          TOKEN: ${{ secrets.INTEGRATIONS_READ_TOKEN }}
+          BRIDGE_COMMIT: ${{ steps.v.outputs.commit }}
+          BRIDGE_VERSION: ${{ steps.v.outputs.bridge }}
+        run: |
+          set -eu
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          mkdir -p .integrations
+          fetch() {   # folder repository commit version
+            src="$RUNNER_TEMP/src-$1"
+            git init -q "$src"
+            git -C "$src" -c http.extraheader="$auth" fetch -q --depth 1 "https://github.com/turzi-org/$2" "$3"
+            git -C "$src" checkout -q FETCH_HEAD
+            if ! grep -q "\"version\": *\"$4\"" "$src/custom_components/$1/manifest.json"; then
+              echo "$2 at $3: custom_components/$1/manifest.json does not say version $4" >&2; exit 1
+            fi
+            cp -R "$src/custom_components/$1" ".integrations/$1"
+            echo "$1 $4 from $2 at $3"
+          }
+          fetch turzi_bridge turzi-bridge-for-home-assistant "$BRIDGE_COMMIT" "$BRIDGE_VERSION"
+          grep -v '^[[:space:]]*\(#\|$\)' bridge-installer/integrations.lock | while read -r folder repo commit version; do
+            fetch "$folder" "$repo" "$commit" "$version"
+          done
+          find .integrations -name __pycache__ -prune -exec rm -rf {} +
 
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -74,7 +96,7 @@ jobs:
         with:
           context: bridge-installer
           file: bridge-installer/Dockerfile.prebuilt
-          build-contexts: bridge=.integrations/bridge
+          build-contexts: integrations=.integrations
           build-args: BRIDGE_VERSION=${{ steps.v.outputs.bridge }}
           platforms: ${{ matrix.platform }}
           push: true

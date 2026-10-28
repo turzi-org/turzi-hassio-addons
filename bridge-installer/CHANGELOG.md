@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.10.7.1
+
+The same bridge, 2026.10.7. New: the add-on can also put Turzi's other
+integrations in place (Akuvox, Hikvision, alarmo, the thermostat), the ones
+its «integrations» option lists, when the add-on starts, with one restart of
+Home Assistant if that changed anything. A newer copy put in with HACS stays.
+Only the installer image built by Turzi carries them; built on the machine,
+it carries the bridge alone and says so.
+
 ## 2026.10.7
 
 Carries the Turzi bridge 2026.10.7: a Home Assistant that restarts is shown
