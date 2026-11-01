@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.13.1
+
+The same bridge, 2026.10.13. A Home Assistant that serves several
+communities, each through its own Turzi Stack, asks all of them before it
+replaces the bridge, and only when they agree. Before, the last Stack to set
+the add-on up was the only one asked, and while it was off nothing could be
+updated.
+
 ## 2026.10.13
 
 Carries the Turzi bridge 2026.10.13. Each bridge is titled after its

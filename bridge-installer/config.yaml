@@ -11,7 +11,7 @@
 # alone, with the same bridge, adds a fourth number (2026.10.3.1). Keep it
 # quoted.
 name: Turzi Bridge Installer
-version: "2026.10.13"
+version: "2026.10.13.1"
 slug: turzi_bridge_installer
 description: Puts the Turzi bridge in this Home Assistant and replaces it when a new version comes. Nothing to copy by hand.
 url: https://github.com/turzi-org/turzi-hassio-addons
@@ -27,7 +27,9 @@ startup: application
 boot: auto
 
 # Home Assistant's configuration folder, at /homeassistant, to write
-# custom_components/turzi_bridge. Nothing else is read or written.
+# custom_components/turzi_bridge, and to read which Turzi Stacks its bridge
+# entries are reached through (.storage/core.config_entries, #1163). Nothing
+# else is read or written.
 map:
   - type: homeassistant_config
     read_only: false
@@ -37,10 +39,9 @@ map:
 hassio_api: true
 hassio_role: homeassistant
 
-# `stack_url` is written by the Turzi Stack when it installs this add-on: where
-# the Stack is in the building. With it, this add-on asks the Stack before it
-# replaces a bridge, and the Turzi Supervisor decides when
-# (TURZI_SUPERVISOR.md §6.2), without anybody signing in here a second time.
+# `stack_url` is no longer read (#1163): the Stacks this add-on asks are the
+# ones its Home Assistant's bridge entries are reached through, all of them.
+# It stays in the schema only so a Stack that still writes it is not refused.
 options:
   restart_home_assistant: true
 schema:

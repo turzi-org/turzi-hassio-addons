@@ -15,6 +15,9 @@ RUN mkdir -p /opt/turzi \
  && grep -q "\"version\": \"${BRIDGE_VERSION}\"" /opt/turzi/turzi_bridge/manifest.json \
  && rm -rf /tmp/*
 
+# jq reads Home Assistant's bridge entries, to know which Turzi Stacks to ask (#1163).
+RUN apk add --no-cache jq
+
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 CMD ["/run.sh"]
