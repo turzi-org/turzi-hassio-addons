@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.10.12
+
+Carries the Turzi bridge 2026.10.12. A bridge whose building broker stops
+answering, as when its Turzi Stack moves the broker to TLS, asks Turzi for its
+connection again and reconnects by itself. Also since 2026.10.7: the login is
+asked for again when the broker refuses it, sensors send their state class,
+fans their speed steps and presets, devices their connections, and event
+entities are published only as Turzi events.
+
 ## 2026.10.7
 
 Carries the Turzi bridge 2026.10.7: a Home Assistant that restarts is shown
