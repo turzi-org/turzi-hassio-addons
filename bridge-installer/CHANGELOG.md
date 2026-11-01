@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.13
+
+Carries the Turzi bridge 2026.10.13. Each bridge is titled after its
+community and the organization that administers it, such as «Turzi · Dev
+Smoke Test (Turzi)», instead of a code, so several bridges in one Home
+Assistant are told apart. The Turzi Stack address field takes only an IP
+address, and says so when it gets a URL.
+
 ## 2026.10.12
 
 Carries the Turzi bridge 2026.10.12. A bridge whose building broker stops
