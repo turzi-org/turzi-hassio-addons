@@ -5,8 +5,8 @@ FROM alpine:3.22
 
 # The bridge, at one commit: a tag can be moved, a commit cannot. BRIDGE_VERSION
 # is what that commit's manifest must say, and config.yaml's `version` too.
-ARG BRIDGE_COMMIT=865e44f1bdb2563c8157765857a0cdd4763f55e7
-ARG BRIDGE_VERSION=2026.10.7
+ARG BRIDGE_COMMIT=959b397426f102e9dac15f04de6ed0b1ca5a37a7
+ARG BRIDGE_VERSION=2026.11.23
 
 ADD https://github.com/turzi-org/turzi-bridge-for-home-assistant/archive/${BRIDGE_COMMIT}.tar.gz /tmp/bridge.tar.gz
 RUN mkdir -p /opt/turzi \

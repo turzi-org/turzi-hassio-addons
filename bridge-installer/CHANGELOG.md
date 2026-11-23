@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.11.23
+
+Carries the Turzi bridge 2026.11.23: when the Turzi Stack it connects to
+changes its name (a move to another zone), the bridge finds it again by
+itself, accepting the new name only for the same Stack. The integration is
+shown as «Turzi Edge Stack».
+
 ## 2026.10.7
 
 Carries the Turzi bridge 2026.10.7: a Home Assistant that restarts is shown
