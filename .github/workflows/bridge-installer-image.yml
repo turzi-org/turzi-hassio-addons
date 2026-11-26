@@ -92,6 +92,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # A release is never rebuilt under the same tag: a second dispatch would push a different image (a newer
+      # base) under a version the Supervisor already pulled. A change, even to the add-on alone, bumps the
+      # fourth number instead (config.yaml).
+      - name: Refuse a version already published
+        run: |
+          image=ghcr.io/turzi-org/turzi-ha-installer-${{ matrix.arch }}:${{ steps.v.outputs.version }}
+          if docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
+            echo "$image is already published; bump config.yaml's version" >&2; exit 1
+          fi
+
       - uses: docker/build-push-action@v6
         with:
           context: bridge-installer
