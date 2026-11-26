@@ -1,0 +1,105 @@
+name: bridge-installer image
+
+# The installer, prebuilt and private (turzi-apps PRIVATE_IMAGES.md §7.3), so the integrations' repositories
+# can go private: CI reads the bridge and the integrations in integrations.lock with a read token and puts
+# them in the image; Home Assistant then pulls the image with a credential the Turzi Stack gives it, instead
+# of building the add-on from a public download.
+#
+# Only by hand until the first run is good and the package is made private (a package a public repository
+# publishes starts public). Then config.yaml gains `image:`, and pushes to master publish it too.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Home Assistant's arch names on the left, which the Supervisor puts in config.yaml's `{arch}`.
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: aarch64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+
+      # The add-on's version is the tag the Supervisor asks for, and the bridge it carries is the one
+      # Dockerfile pins: the same pin for both ways of building it, so they cannot drift.
+      - name: Read the versions
+        id: v
+        run: |
+          version=$(sed -n 's/^version:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' bridge-installer/config.yaml)
+          commit=$(sed -n 's/^ARG BRIDGE_COMMIT=//p' bridge-installer/Dockerfile)
+          bridge=$(sed -n 's/^ARG BRIDGE_VERSION=//p' bridge-installer/Dockerfile)
+          for x in "$version" "$commit" "$bridge"; do
+            if [ -z "$x" ]; then echo "config.yaml's version or Dockerfile's BRIDGE_COMMIT/BRIDGE_VERSION is missing" >&2; exit 1; fi
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "bridge=$bridge" >> "$GITHUB_OUTPUT"
+          echo "Publishing $version (bridge $bridge at $commit) for ${{ matrix.arch }}"
+
+      - name: Check the read token is set
+        env:
+          TOKEN: ${{ secrets.INTEGRATIONS_READ_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "INTEGRATIONS_READ_TOKEN is not set: a token that can read turzi-org's integration repositories" >&2
+            exit 1
+          fi
+
+      # The bridge at Dockerfile's pin and the others at integrations.lock's, each one's folder under
+      # custom_components copied to .integrations/<folder>, and its manifest checked against the version pinned.
+      # The token goes in a header for each fetch and is written nowhere.
+      - name: Fetch the integrations
+        env:
+          TOKEN: ${{ secrets.INTEGRATIONS_READ_TOKEN }}
+          BRIDGE_COMMIT: ${{ steps.v.outputs.commit }}
+          BRIDGE_VERSION: ${{ steps.v.outputs.bridge }}
+        run: |
+          set -eu
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          mkdir -p .integrations
+          fetch() {   # folder repository commit version
+            src="$RUNNER_TEMP/src-$1"
+            git init -q "$src"
+            git -C "$src" -c http.extraheader="$auth" fetch -q --depth 1 "https://github.com/turzi-org/$2" "$3"
+            git -C "$src" checkout -q FETCH_HEAD
+            if ! grep -q "\"version\": *\"$4\"" "$src/custom_components/$1/manifest.json"; then
+              echo "$2 at $3: custom_components/$1/manifest.json does not say version $4" >&2; exit 1
+            fi
+            cp -R "$src/custom_components/$1" ".integrations/$1"
+            echo "$1 $4 from $2 at $3"
+          }
+          fetch turzi_bridge turzi-bridge-for-home-assistant "$BRIDGE_COMMIT" "$BRIDGE_VERSION"
+          grep -v '^[[:space:]]*\(#\|$\)' bridge-installer/integrations.lock | while read -r folder repo commit version; do
+            fetch "$folder" "$repo" "$commit" "$version"
+          done
+          find .integrations -name __pycache__ -prune -exec rm -rf {} +
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: bridge-installer
+          file: bridge-installer/Dockerfile.prebuilt
+          build-contexts: integrations=.integrations
+          build-args: BRIDGE_VERSION=${{ steps.v.outputs.bridge }}
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          tags: |
+            ghcr.io/turzi-org/turzi-ha-installer-${{ matrix.arch }}:${{ steps.v.outputs.version }}
